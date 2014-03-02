@@ -1,0 +1,116 @@
+Let's make a game!
+    -Code Clicker
+    -by @SuperChibiChii
+    -created on 03/02/2014
+    -last updated on 03/02/2014
+    -version 1
+
+Settings :
+    -prices increase by 115%
+    -selling gives back 50%
+    -resources are hidden by default
+    -clickables are hidden by default
+    -buildings are hidden by default
+    -upgrades are hidden by default
+    -show log
+    -custom stylesheet : http://pastebin.com/raw.php?i=jq9qCqVG
+    -background : http://s27.postimg.org/65wut828z/Wallpaper1.jpg
+    -text color : #fff
+    -fonts : Kavoon
+    //this bit is still a work in progress
+    -boxes : main (resources, clickables); store (upgrades, buildings); stats (achievements)
+
+Resources :
+    *loc
+    -named line of code|lines of code
+    -displayed as %a line%s of code
+    -visible
+
+    *money
+    -named dollar|dollars
+    -displayed as %a dollar%s
+    -starts at 1000
+    -visible
+
+    *abstraction
+    -named abstraction|abstractions
+    -starts at 0
+    -hidden
+    
+    *managementOverhead
+    -named management overhead|management overhead
+    -displayed as %a management overhead
+    -visible
+
+Clickables :
+    *WriteSomeCode
+    -"This is your life. You sit down and write code."
+    -gives 1 loc
+    -visible
+    -gains 10% per keyboard
+    -gains 10% per abstraction
+    -named Write Some Code
+    -picture : http://windmillnetworking.com/wp-content/uploads/2012/07/CODE_iStock_000015733452Small.jpeg
+    
+    *GoToMeetings
+    -"You don't want to do this, but sometimes you have to...it pleases the management gods."
+    -gives -1 loc
+    -gives 1 managementOverhead
+    -visible
+    -gains 10% per addManagementOverhead
+    -named Go to (pointless) Meetings
+    -picture : http://markarnold.typepad.com/.a/6a011571275931970c017ee8038c00970d-pi
+
+Buildings :
+    *keyboard
+    -"A normal QWERTY keyboard. Nothing special, but greasy from being touched by unwashed programmer fingers."
+    -costs 15 money
+    -gives 0.1 loc
+    -named keyboard|keyboards
+    -visible
+    -starts at 1
+    -picture : http://1.bp.blogspot.com/-NsWwd0qCkxM/TbzxZVZsDCI/AAAAAAAAAAQ/jvsbuaIo1OM/s1600/ergonomic-keyboard1.jpg
+
+    *Feature
+    -"Add a feature to your program. Features attract more revenue, but costs lines of code to implement."
+    -costs 100 loc
+    -gives 10 money
+    -visible
+    -named feature|features
+    -starts at 1
+    -gains 5% per abstraction
+    -picture : http://www.expetecrochester.com/files/2012/07/Software-Features.png
+
+    *Refactor
+    -"Refactoring code makes features easier to implement. This will reduce the cost of adding new features."
+    -costs 100 loc
+    -gives 0 money
+    -represents 1 abstraction
+    -named refactor code|refactor code
+    -visible
+    -picture : http://martinfowler.com/bliki/images/opportunisticRefactoring/sketch.png
+
+    *addManagementOverhead
+    -"Management overhead is sometimes a necessary evil. After all, it's the managers who makes all the money, and they need to be seen doing something..."
+    -costs 500 money
+    -gives 5 money
+    -named Add Management Overhead|Add Management Overhead
+    -visible
+    -picture : http://www.shenzhen-standard.com/wp-content/uploads/2011/05/meeting_cartoon.gif
+
+Upgrades :
+    *UseScala
+    -"Oh joy! You've discovered the zen of functional programming in a corporate world, and pushed management to allow you to use Scala!<br>Unlocks <b>functional programming paradigm</b>."
+    -costs 1000 loc
+    -unlocks at 3 refactor
+    -multiplies efficiency of Refactor by 10%
+    -named Use Scala
+
+Achievements :
+    *LetsGetCoding
+    -"Wrote <b>1</b> line of code."
+    -unlocks at 1 loc
+    -named Let's get codin'!
+    *EarnSomeDough
+    -"Earn <b>100</b> dollars."
+    -unlocks at 100 money

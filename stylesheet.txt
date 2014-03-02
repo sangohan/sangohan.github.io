@@ -1,0 +1,44 @@
+/**body
+{
+    background:#664439;
+    color:#F5EFCB;
+}
+
+#resources,#clickables,#buildings,#upgrades,#achievements,#log
+{
+    color:#664439;
+    background:#F5EFCB;
+}
+**/
+#clickable-writesomecode img 
+{
+    width: 500px;
+}
+
+#buildings img 
+{
+    width: 120px;
+}
+#clickables img
+{
+    width : 500px;
+}
+.haspic.clickable>div 
+{
+    display:block;
+}
+
+#buildingTitle  {
+  visibility: hidden;
+}
+#buildingTitle:after {
+  content:'Work!'; 
+  visibility: visible;
+  display: block;
+  position: absolute;
+  padding: 5px;
+  top: 2px;
+}
+.particle {
+    color: green;
+}
