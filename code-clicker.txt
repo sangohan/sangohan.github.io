@@ -13,7 +13,7 @@ Settings :
     -buildings are hidden by default
     -upgrades are hidden by default
     -show log
-    -custom stylesheet : http://pastebin.com/raw.php?i=jq9qCqVG
+    -custom stylesheet : http://sangohan.github.io/stylesheet.txt
     -background : http://s27.postimg.org/65wut828z/Wallpaper1.jpg
     -text color : #fff
     -fonts : Kavoon
