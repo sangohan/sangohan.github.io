@@ -2476,6 +2476,7 @@ flixel_addons_nape_FlxNapeState.prototype = $extend(flixel_FlxState.prototype,{
 	,__properties__: $extend(flixel_FlxState.prototype.__properties__,{set_napeDebugEnabled:"set_napeDebugEnabled"})
 });
 var NapeTestState = function(MaxSize) {
+	this.cost = 0;
 	flixel_addons_nape_FlxNapeState.call(this,MaxSize);
 };
 $hxClasses["NapeTestState"] = NapeTestState;
@@ -2484,25 +2485,41 @@ NapeTestState.__super__ = flixel_addons_nape_FlxNapeState;
 NapeTestState.prototype = $extend(flixel_addons_nape_FlxNapeState.prototype,{
 	shapes: null
 	,mouseJoint: null
+	,cost: null
+	,costUI: null
 	,create: function() {
 		flixel_addons_nape_FlxNapeState.prototype.create.call(this);
 		flixel_FlxG.plugins.add_flixel_addons_plugin_FlxMouseControl(new flixel_addons_plugin_FlxMouseControl());
-		this.set_napeDebugEnabled(true);
+		var background = new flixel_FlxSprite();
+		background.makeGraphic(flixel_FlxG.width,flixel_FlxG.height,-16777216);
+		background.set_alpha(1);
+		flixel_FlxG.game._state.members.splice(0,0,background);
+		flixel_FlxG.game._state.length++;
+		flixel_plugin_MouseEventManager.add(background,$bind(this,this.handleBackgroundClick));
+		this.set_napeDebugEnabled(false);
 		this.createWalls();
-		flixel_addons_nape_FlxNapeState.space.get_gravity().setxy(0,500);
+		flixel_addons_nape_FlxNapeState.space.get_gravity().setxy(0,900);
 		this.shapes = [];
+		this.costUI = new flixel_text_FlxText(0,0,0,"cost: $" + this.cost);
+		this.costUI.setFormat(null,30,-16777216,"center");
+		this.costUI.setBorderStyle(2,-1,2,null);
+		this.add(this.costUI);
+	}
+	,makeShape: function() {
 		var shape = new flixel_addons_nape_FlxNapeSprite();
 		var width = 100;
-		var height = 100;
+		var height = 300;
 		shape.makeGraphic(width,height,-2354116);
 		shape.createRectangularBody();
-		shape.antialiasing = true;
-		shape.setBodyMaterial(0.2,0.57,0.74,7.8,0.001);
-		shape.body.get_position().set_y(100);
-		shape.body.get_position().set_x(100);
+		shape.antialiasing = false;
+		shape.setBodyMaterial(0.2,0.57,0.74,7.8,10);
+		shape.body.get_position().set_y(flixel_FlxG.mouse.x);
+		shape.body.get_position().set_x(flixel_FlxG.mouse.y);
 		flixel_plugin_MouseEventManager.add(shape,$bind(this,this.createMouseJoint));
 		this.shapes.push(shape);
 		this.add(shape);
+		this.cost += 1;
+		this.costUI.set_text("cost: $" + this.cost);
 	}
 	,update: function() {
 		flixel_addons_nape_FlxNapeState.prototype.update.call(this);
@@ -2510,6 +2527,9 @@ NapeTestState.prototype = $extend(flixel_addons_nape_FlxNapeState.prototype,{
 			this.mouseJoint.set_anchor1(new nape_geom_Vec2(flixel_FlxG.mouse.x,flixel_FlxG.mouse.y));
 			if(flixel_FlxG.mouse._leftButton.justReleased()) this.mouseJoint.set_space(null);
 		}
+	}
+	,handleBackgroundClick: function(spr) {
+		this.makeShape();
 	}
 	,registerPhysSprite: function(spr) {
 		flixel_plugin_MouseEventManager.add(spr,$bind(this,this.createMouseJoint));
@@ -14634,6 +14654,493 @@ flixel_system_ui_FlxSystemButton.prototype = $extend(openfl_display_Sprite.proto
 	,__class__: flixel_system_ui_FlxSystemButton
 	,__properties__: $extend(openfl_display_Sprite.prototype.__properties__,{set_toggled:"set_toggled"})
 });
+var flixel_text_FlxText = function(X,Y,FieldWidth,Text,Size,EmbeddedFont) {
+	if(EmbeddedFont == null) EmbeddedFont = true;
+	if(Size == null) Size = 8;
+	if(FieldWidth == null) FieldWidth = 0;
+	if(Y == null) Y = 0;
+	if(X == null) X = 0;
+	this._heightInc = 0;
+	this._widthInc = 0;
+	this.borderQuality = 1;
+	this.borderSize = 1;
+	this.borderColor = 0;
+	this.borderStyle = 0;
+	flixel_FlxSprite.call(this,X,Y);
+	this._filters = [];
+	var setTextEmpty = false;
+	if(Text == null || Text == "") {
+		Text = "";
+		setTextEmpty = true;
+	}
+	this._textField = new openfl_text_TextField();
+	this._textField.set_selectable(false);
+	this._textField.multiline = true;
+	this._textField.set_wordWrap(true);
+	this._defaultFormat = new openfl_text_TextFormat(flixel_system_FlxAssets.FONT_DEFAULT,Size,16777215);
+	this._formatAdjusted = new openfl_text_TextFormat();
+	this._textField.set_defaultTextFormat(this._defaultFormat);
+	this._textField.set_text(Text);
+	this.set_fieldWidth(FieldWidth);
+	this._textField.embedFonts = EmbeddedFont;
+	this._formats = [];
+	this._textField.set_height(Text.length <= 0?1:10);
+	this.allowCollisions = 0;
+	this.set_moves(false);
+	var key = flixel_FlxG.bitmap.getUniqueKey("text");
+	var graphicWidth;
+	if(FieldWidth <= 0) graphicWidth = 1; else graphicWidth = FieldWidth | 0;
+	this.makeGraphic(graphicWidth,1,0,false,key);
+	this.calcFrame();
+	if(setTextEmpty) this.set_text("");
+	this.shadowOffset = flixel_util_FlxPoint.get(1,1);
+};
+$hxClasses["flixel.text.FlxText"] = flixel_text_FlxText;
+flixel_text_FlxText.__name__ = ["flixel","text","FlxText"];
+flixel_text_FlxText.__super__ = flixel_FlxSprite;
+flixel_text_FlxText.prototype = $extend(flixel_FlxSprite.prototype,{
+	borderStyle: null
+	,borderColor: null
+	,borderSize: null
+	,borderQuality: null
+	,shadowOffset: null
+	,_textField: null
+	,_defaultFormat: null
+	,_formatAdjusted: null
+	,_formats: null
+	,_filters: null
+	,_widthInc: null
+	,_heightInc: null
+	,destroy: function() {
+		this._textField = null;
+		this._defaultFormat = null;
+		this._formatAdjusted = null;
+		this._filters = null;
+		if(this._formats != null) {
+			var _g = 0;
+			var _g1 = this._formats;
+			while(_g < _g1.length) {
+				var format = _g1[_g];
+				++_g;
+				if(format != null) {
+					format.destroy();
+					format = null;
+				}
+			}
+		}
+		this._formats = null;
+		this.shadowOffset = flixel_util_FlxDestroyUtil.put(this.shadowOffset);
+		flixel_FlxSprite.prototype.destroy.call(this);
+	}
+	,addFormat: function(Format,Start,End) {
+		if(End == null) End = -1;
+		if(Start == null) Start = -1;
+		if(Start > -1) Format.start = Start; else Format.start = Format.start;
+		if(End > -1) Format.end = End; else Format.end = Format.end;
+		this._formats.push(Format);
+		this._formats.sort(function(left,right) {
+			if(left.start < right.start) return -1; else return 1;
+		});
+		this.dirty = true;
+	}
+	,removeFormat: function(Format) {
+		flixel_util_FlxArrayUtil.fastSplice_flixel_text_FlxTextFormat(this._formats,Format);
+		this.dirty = true;
+	}
+	,clearFormats: function() {
+		var _g = 0;
+		var _g1 = this._formats;
+		while(_g < _g1.length) {
+			var format = _g1[_g];
+			++_g;
+			format.destroy();
+			format = null;
+		}
+		this._formats = [];
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+	}
+	,setFormat: function(Font,Size,Color,Alignment,BorderStyle,BorderColor,Embedded) {
+		if(Embedded == null) Embedded = true;
+		if(BorderColor == null) BorderColor = 0;
+		if(BorderStyle == null) BorderStyle = 0;
+		if(Color == null) Color = 16777215;
+		if(Size == null) Size = 8;
+		if(Embedded) {
+			if(Font == null) this._defaultFormat.font = flixel_system_FlxAssets.FONT_DEFAULT; else this._defaultFormat.font = openfl_Assets.getFont(Font).get_fontName();
+		} else if(Font != null) this._defaultFormat.font = Font;
+		this._textField.embedFonts = Embedded;
+		this._defaultFormat.size = Size;
+		Color &= 16777215;
+		this._defaultFormat.color = Color;
+		this._defaultFormat.align = this.convertTextAlignmentFromString(Alignment);
+		this._textField.set_defaultTextFormat(this._defaultFormat);
+		this.set_borderStyle(BorderStyle);
+		this.set_borderColor(BorderColor);
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+		return this;
+	}
+	,setBorderStyle: function(Style,Color,Size,Quality) {
+		if(Quality == null) Quality = 1;
+		if(Size == null) Size = 1;
+		if(Color == null) Color = 0;
+		this.set_borderStyle(Style);
+		this.set_borderColor(Color);
+		this.set_borderSize(Size);
+		this.set_borderQuality(Quality);
+	}
+	,addFilter: function(filter,widthInc,heightInc) {
+		if(heightInc == null) heightInc = 0;
+		if(widthInc == null) widthInc = 0;
+		this._filters.push(filter);
+		this._widthInc = widthInc;
+		this._heightInc = heightInc;
+		this.dirty = true;
+	}
+	,removeFilter: function(filter) {
+		var removed = HxOverrides.remove(this._filters,filter);
+		if(removed) this.dirty = true;
+	}
+	,clearFilters: function() {
+		if(this._filters.length > 0) this.dirty = true;
+		this._filters = [];
+	}
+	,updateFrameData: function() {
+		if(this.cachedGraphics != null) {
+			this.framesData = this.cachedGraphics.get_tilesheet().getSpriteSheetFrames(this.region);
+			this.set_frame(this.framesData.frames[0]);
+			this.frames = 1;
+		}
+	}
+	,applyFormats: function(FormatAdjusted,UseBorderColor) {
+		if(UseBorderColor == null) UseBorderColor = false;
+		if(UseBorderColor) FormatAdjusted.color = this.borderColor; else FormatAdjusted.color = this._defaultFormat.color;
+		this._textField.setTextFormat(FormatAdjusted,0,this._textField.get_text().length);
+		var _g = 0;
+		var _g1 = this._formats;
+		while(_g < _g1.length) {
+			var format = _g1[_g];
+			++_g;
+			if(this._textField.get_text().length - 1 < format.start) break; else {
+				FormatAdjusted.font = format.format.font;
+				FormatAdjusted.bold = format.format.bold;
+				FormatAdjusted.italic = format.format.italic;
+				FormatAdjusted.size = format.format.size;
+				if(UseBorderColor) FormatAdjusted.color = format.borderColor; else FormatAdjusted.color = format.format.color;
+			}
+			this._textField.setTextFormat(FormatAdjusted,format.start,Std["int"](Math.min(format.end,this._textField.get_text().length)));
+		}
+	}
+	,set_fieldWidth: function(value) {
+		if(this._textField != null) {
+			if(value <= 0) {
+				this.set_wordWrap(false);
+				this.set_autoSize(true);
+			} else this._textField.set_width(value);
+			this.dirty = true;
+		}
+		return value;
+	}
+	,get_fieldWidth: function() {
+		if(this._textField != null) return this._textField.get_width(); else return 0;
+	}
+	,set_autoSize: function(value) {
+		if(this._textField != null) {
+			if(value) this._textField.set_autoSize(openfl_text_TextFieldAutoSize.LEFT); else this._textField.set_autoSize(openfl_text_TextFieldAutoSize.NONE);
+			this.dirty = true;
+		}
+		return value;
+	}
+	,get_autoSize: function() {
+		if(this._textField != null) return this._textField.autoSize != openfl_text_TextFieldAutoSize.NONE; else return false;
+	}
+	,get_text: function() {
+		return this._textField.get_text();
+	}
+	,set_text: function(Text) {
+		var ot = this._textField.get_text();
+		this._textField.set_text(Text);
+		if(this._textField.get_text() != ot) this.dirty = true;
+		return this._textField.get_text();
+	}
+	,get_size: function() {
+		return this._defaultFormat.size;
+	}
+	,set_size: function(Size) {
+		this._defaultFormat.size = Size;
+		this._textField.set_defaultTextFormat(this._defaultFormat);
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+		return Size;
+	}
+	,set_color: function(Color) {
+		Color &= 16777215;
+		if(this._defaultFormat.color == Color) return Color;
+		this._defaultFormat.color = Color;
+		this.color = Color;
+		this._textField.set_defaultTextFormat(this._defaultFormat);
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+		return Color;
+	}
+	,get_font: function() {
+		return this._defaultFormat.font;
+	}
+	,set_font: function(Font) {
+		this._textField.embedFonts = true;
+		this._defaultFormat.font = openfl_Assets.getFont(Font).get_fontName();
+		this._textField.set_defaultTextFormat(this._defaultFormat);
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+		return Font;
+	}
+	,get_embedded: function() {
+		return this._textField.embedFonts = true;
+	}
+	,get_systemFont: function() {
+		return this._defaultFormat.font;
+	}
+	,set_systemFont: function(Font) {
+		this._textField.embedFonts = false;
+		this._defaultFormat.font = Font;
+		this._textField.set_defaultTextFormat(this._defaultFormat);
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+		return Font;
+	}
+	,get_bold: function() {
+		return this._defaultFormat.bold;
+	}
+	,set_bold: function(value) {
+		if(this._defaultFormat.bold != value) {
+			this._defaultFormat.bold = value;
+			this._textField.set_defaultTextFormat(this._defaultFormat);
+			this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+			this.dirty = true;
+		}
+		return value;
+	}
+	,get_italic: function() {
+		return this._defaultFormat.italic;
+	}
+	,set_italic: function(value) {
+		if(this._defaultFormat.italic != value) {
+			this._defaultFormat.italic = value;
+			this._textField.set_defaultTextFormat(this._defaultFormat);
+			this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+			this.dirty = true;
+		}
+		return value;
+	}
+	,get_wordWrap: function() {
+		return this._textField.get_wordWrap();
+	}
+	,set_wordWrap: function(value) {
+		if(this._textField.get_wordWrap() != value) {
+			this._textField.set_wordWrap(value);
+			this.dirty = true;
+		}
+		return value;
+	}
+	,get_alignment: function() {
+		return js_Boot.__cast(this._defaultFormat.align , String);
+	}
+	,set_alignment: function(Alignment) {
+		this._defaultFormat.align = this.convertTextAlignmentFromString(Alignment);
+		this._textField.set_defaultTextFormat(this._defaultFormat);
+		this._textField.setTextFormat(this._defaultFormat,0,this._textField.get_text().length);
+		this.dirty = true;
+		return Alignment;
+	}
+	,set_borderStyle: function(style) {
+		if(style != this.borderStyle) {
+			this.borderStyle = style;
+			this.dirty = true;
+		}
+		return this.borderStyle;
+	}
+	,set_borderColor: function(Color) {
+		Color &= 16777215;
+		if(this.borderColor != Color && this.borderStyle != 0) this.dirty = true;
+		this.borderColor = Color;
+		return Color;
+	}
+	,set_borderSize: function(Value) {
+		if(Value != this.borderSize && this.borderStyle != 0) this.dirty = true;
+		this.borderSize = Value;
+		return Value;
+	}
+	,set_borderQuality: function(Value) {
+		if(Value < 0) Value = 0; else if(Value > 1) Value = 1;
+		if(Value != this.borderQuality && this.borderStyle != 0) this.dirty = true;
+		this.borderQuality = Value;
+		return Value;
+	}
+	,get_textField: function() {
+		return this._textField;
+	}
+	,set_cachedGraphics: function(Value) {
+		var cached = flixel_FlxSprite.prototype.set_cachedGraphics.call(this,Value);
+		if(Value != null) Value.set_destroyOnNoUse(true);
+		return cached;
+	}
+	,updateColorTransform: function() {
+		if(this.alpha != 1) {
+			if(this.colorTransform == null) this.colorTransform = new openfl_geom_ColorTransform(1,1,1,this.alpha); else this.colorTransform.alphaMultiplier = this.alpha;
+			this.useColorTransform = true;
+		} else {
+			if(this.colorTransform != null) this.colorTransform.alphaMultiplier = 1;
+			this.useColorTransform = false;
+		}
+		this.dirty = true;
+	}
+	,regenGraphics: function() {
+		var oldWidth = this.cachedGraphics.bitmap.width;
+		var oldHeight = this.cachedGraphics.bitmap.height;
+		var newWidth = this._textField.get_width() + this._widthInc;
+		var newHeight = this._textField.get_textHeight() + this._heightInc + 4;
+		if(this._textField.get_textHeight() == 0) newHeight = oldHeight;
+		if(oldWidth != newWidth || oldHeight != newHeight) {
+			this.set_height(newHeight - this._heightInc);
+			var key = this.cachedGraphics.key;
+			flixel_FlxG.bitmap.remove(key);
+			this.makeGraphic(newWidth | 0,newHeight | 0,0,false,key);
+			this.frameHeight = Std["int"](this.get_height());
+			this._textField.set_height(this.get_height() * 1.2);
+			this._flashRect.x = 0;
+			this._flashRect.y = 0;
+			this._flashRect.width = newWidth;
+			this._flashRect.height = newHeight;
+		} else this.cachedGraphics.bitmap.fillRect(this._flashRect,0);
+	}
+	,calcFrame: function(RunOnCpp) {
+		if(RunOnCpp == null) RunOnCpp = false;
+		if(this._textField == null) return;
+		if(this._filters != null) this._textField.set_filters(this._filters);
+		this.regenGraphics();
+		if(this._textField != null && this._textField.get_text() != null && this._textField.get_text().length > 0) {
+			this._formatAdjusted.font = this._defaultFormat.font;
+			this._formatAdjusted.size = this._defaultFormat.size;
+			this._formatAdjusted.bold = this._defaultFormat.bold;
+			this._formatAdjusted.italic = this._defaultFormat.italic;
+			this._formatAdjusted.color = this._defaultFormat.color;
+			this._formatAdjusted.align = this._defaultFormat.align;
+			this._matrix.identity();
+			this._matrix.translate(0.5 * this._widthInc | 0,0.5 * this._heightInc | 0);
+			if(this._defaultFormat.align == openfl_text_TextFormatAlign.CENTER && this._textField.get_numLines() == 1) {
+				this._formatAdjusted.align = openfl_text_TextFormatAlign.LEFT;
+				this._textField.setTextFormat(this._formatAdjusted,0,this._textField.get_text().length);
+				this._matrix.translate(Math.floor((this.get_width() - this._textField.get_textWidth()) / 2),0);
+			}
+			if(this.borderStyle != 0) {
+				var iterations = this.borderSize * this.borderQuality | 0;
+				if(iterations <= 0) iterations = 1;
+				var delta = this.borderSize / iterations;
+				if(this.borderStyle == 1) {
+					this.applyFormats(this._formatAdjusted,true);
+					var _g = 0;
+					while(_g < iterations) {
+						var iter = _g++;
+						this._matrix.translate(delta,delta);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+					}
+					this._matrix.translate(-this.shadowOffset.x * this.borderSize,-this.shadowOffset.y * this.borderSize);
+					this.applyFormats(this._formatAdjusted,false);
+				} else if(this.borderStyle == 2) {
+					this.applyFormats(this._formatAdjusted,true);
+					var itd = delta;
+					var _g1 = 0;
+					while(_g1 < iterations) {
+						var iter1 = _g1++;
+						this._matrix.translate(-itd,-itd);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(itd,0);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(itd,0);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(0,itd);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(0,itd);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(-itd,0);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(-itd,0);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(0,-itd);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(itd,0);
+						itd += delta;
+					}
+					this.applyFormats(this._formatAdjusted,false);
+				} else if(this.borderStyle == 3) {
+					this.applyFormats(this._formatAdjusted,true);
+					var itd1 = delta;
+					var _g2 = 0;
+					while(_g2 < iterations) {
+						var iter2 = _g2++;
+						this._matrix.translate(-itd1,-itd1);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(itd1 * 2,0);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(0,itd1 * 2);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(-itd1 * 2,0);
+						this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+						this._matrix.translate(itd1,-itd1);
+						itd1 += delta;
+					}
+					this.applyFormats(this._formatAdjusted,false);
+				}
+			} else this.applyFormats(this._formatAdjusted,false);
+			this.cachedGraphics.bitmap.draw(this._textField,this._matrix);
+		}
+		this.dirty = false;
+		if(this.framePixels == null || this.framePixels.width != this.cachedGraphics.bitmap.width || this.framePixels.height != this.cachedGraphics.bitmap.height) {
+			this.framePixels = flixel_util_FlxDestroyUtil.dispose(this.framePixels);
+			this.framePixels = new openfl_display_BitmapData(this.cachedGraphics.bitmap.width,this.cachedGraphics.bitmap.height,true,0);
+		}
+		this.framePixels.copyPixels(this.cachedGraphics.bitmap,this._flashRect,this._flashPointZero);
+		if(this.useColorTransform) this.framePixels.colorTransform(this._flashRect,this.colorTransform);
+	}
+	,dtfCopy: function() {
+		var defaultTextFormat = this._textField.get_defaultTextFormat();
+		return new openfl_text_TextFormat(defaultTextFormat.font,defaultTextFormat.size,defaultTextFormat.color,defaultTextFormat.bold,defaultTextFormat.italic,defaultTextFormat.underline,defaultTextFormat.url,defaultTextFormat.target,defaultTextFormat.align);
+	}
+	,convertTextAlignmentFromString: function(StrAlign) {
+		if(StrAlign == "right") return openfl_text_TextFormatAlign.RIGHT; else if(StrAlign == "center") return openfl_text_TextFormatAlign.CENTER; else if(StrAlign == "justify") return openfl_text_TextFormatAlign.JUSTIFY; else return openfl_text_TextFormatAlign.LEFT;
+	}
+	,updateFormat: function(Format) {
+		this._textField.setTextFormat(Format,0,this._textField.get_text().length);
+	}
+	,__class__: flixel_text_FlxText
+	,__properties__: $extend(flixel_FlxSprite.prototype.__properties__,{set_autoSize:"set_autoSize",get_autoSize:"get_autoSize",set_fieldWidth:"set_fieldWidth",get_fieldWidth:"get_fieldWidth",get_textField:"get_textField",set_borderQuality:"set_borderQuality",set_borderSize:"set_borderSize",set_borderColor:"set_borderColor",set_borderStyle:"set_borderStyle",set_alignment:"set_alignment",get_alignment:"get_alignment",set_wordWrap:"set_wordWrap",get_wordWrap:"get_wordWrap",set_italic:"set_italic",get_italic:"get_italic",set_bold:"set_bold",get_bold:"get_bold",set_systemFont:"set_systemFont",get_systemFont:"get_systemFont",get_embedded:"get_embedded",set_font:"set_font",get_font:"get_font",set_size:"set_size",get_size:"get_size",set_text:"set_text",get_text:"get_text"})
+});
+var flixel_text_FlxTextFormat = function(FontColor,Bold,Italic,BorderColor,Start,End) {
+	if(End == null) End = -1;
+	if(Start == null) Start = -1;
+	this.end = -1;
+	this.start = -1;
+	if(FontColor != null) FontColor &= 16777215;
+	if(BorderColor != null) BorderColor &= 16777215;
+	this.format = new openfl_text_TextFormat(null,null,FontColor,Bold,Italic);
+	if(Start > -1) this.start = Start;
+	if(End > -1) this.end = End;
+	if(BorderColor == null) this.borderColor = 0; else this.borderColor = BorderColor;
+};
+$hxClasses["flixel.text.FlxTextFormat"] = flixel_text_FlxTextFormat;
+flixel_text_FlxTextFormat.__name__ = ["flixel","text","FlxTextFormat"];
+flixel_text_FlxTextFormat.__interfaces__ = [flixel_interfaces_IFlxDestroyable];
+flixel_text_FlxTextFormat.prototype = {
+	borderColor: null
+	,start: null
+	,end: null
+	,format: null
+	,destroy: function() {
+		this.format = null;
+	}
+	,__class__: flixel_text_FlxTextFormat
+};
 var flixel_text_pxText_PxBitmapFont = function() {
 	this._maxHeight = 0;
 	this._point = new openfl_geom_Point();
@@ -17015,6 +17522,15 @@ flixel_util_FlxAngle.get_TO_RAD = function() {
 var flixel_util_FlxArrayUtil = function() { };
 $hxClasses["flixel.util.FlxArrayUtil"] = flixel_util_FlxArrayUtil;
 flixel_util_FlxArrayUtil.__name__ = ["flixel","util","FlxArrayUtil"];
+flixel_util_FlxArrayUtil.fastSplice_flixel_text_FlxTextFormat = function(array,element) {
+	var index = HxOverrides.indexOf(array,element,0);
+	if(index != -1) {
+		array[index] = array[array.length - 1];
+		array.pop();
+		return array;
+	}
+	return array;
+};
 flixel_util_FlxArrayUtil.setLength_flixel_group_FlxTypedGroup_T = function(array,newLength) {
 	if(newLength < 0) return;
 	var oldLength = array.length;
@@ -103540,6 +104056,10 @@ openfl_geom_Matrix.__identity = new openfl_geom_Matrix();
 flixel_system_layer_frames_FlxFrame.POINT = new openfl_geom_Point();
 flixel_system_layer_frames_FlxFrame.MATRIX = new openfl_geom_Matrix();
 flixel_system_layer_frames_FlxFrame.RECT = new openfl_geom_Rectangle();
+flixel_text_FlxText.BORDER_NONE = 0;
+flixel_text_FlxText.BORDER_SHADOW = 1;
+flixel_text_FlxText.BORDER_OUTLINE = 2;
+flixel_text_FlxText.BORDER_OUTLINE_FAST = 3;
 flixel_text_pxText_PxBitmapFont._storedFonts = new haxe_ds_StringMap();
 flixel_text_pxText_PxBitmapFont.ZERO_POINT = new openfl_geom_Point();
 flixel_tile_GraphicAuto.resourceType = "image/png";
