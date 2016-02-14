@@ -2513,8 +2513,8 @@ NapeTestState.prototype = $extend(flixel_addons_nape_FlxNapeState.prototype,{
 		shape.createRectangularBody();
 		shape.antialiasing = false;
 		shape.setBodyMaterial(0.2,0.57,0.74,7.8,10);
-		shape.body.get_position().set_y(flixel_FlxG.mouse.x);
-		shape.body.get_position().set_x(flixel_FlxG.mouse.y);
+		shape.body.get_position().set_y(flixel_FlxG.mouse.y);
+		shape.body.get_position().set_x(flixel_FlxG.mouse.x);
 		flixel_plugin_MouseEventManager.add(shape,$bind(this,this.createMouseJoint));
 		this.shapes.push(shape);
 		this.add(shape);
