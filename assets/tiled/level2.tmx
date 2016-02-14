@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" width="32" height="32" tilewidth="32" tileheight="32">
+ <tileset firstgid="1" name="tileset" tilewidth="32" tileheight="32">
+  <image source="TileSetVX___Global_4.png" width="1024" height="2016"/>
+ </tileset>
+ <layer name="ground" width="32" height="32">
+  <properties>
+   <property name="tileset" value="tileset"/>
+  </properties>
+  <data encoding="base64" compression="zlib">
+   eJztwwEJAAAMA6A93fo3Wo+jYC+pqqqq+voA0x4gEA==
+  </data>
+ </layer>
+ <layer name="statics" width="32" height="32">
+  <properties>
+   <property name="tileset" value="tileset"/>
+  </properties>
+  <data encoding="base64" compression="zlib">
+   eJzlV1tOw0AMTCnJveAmqFwkqpp7QKXeAwrco01ROQZrZUcdjPdhKugHlqzN0zOztjebbds0L8G3FxrH4IcLjsznqmuaWff742jol3slu2lt97wjBg6sf++MU4Ot34PtMvo9sT32EOI9VuhftZOX8Jft5Djma3wP9hTOn+O1lH7GFr+7trHvw7119H03jYf56Rr8Nr4/zk7vlfTz/Pfh/dcwvp2RC8F+n3+Nk8u/aP5JbeewoR+W0681DxkOFj4w4XK+UjFy+rVtDHzUCTjAGBOOZ5mDt/+tvtcxodsy/axHP/B1XbAu6Lb4WubVL9g99RLPMR/XYHv1p7B1roeIObRpDlhPavSjB3pag7iXdE43EduqV63Dm3/Wzti6r0rYmBNv/q3a9nyjGFvMo1/WcNGpOegcW98t5FD3TUn/kmIuaK5TPa6/W9p0z5b0r9vvMRHX4mA9l+IgVtLPfPW6l6sFa59j1VXt/ifl3IepPRljaA4l/dgrWXFTa11uj6lru5R/7JVQv4sYM6db1/85+i3jvKd085pk6ce8nrv+1XAAhjWvXv3WHqrEAf87H+H4KLjEw9I/Rg67PxhT/3//8f/3E5r/rtc=
+  </data>
+ </layer>
+ <objectgroup name="objects" width="32" height="32">
+  <object name="player_spawn0" type="spawn" x="160" y="864" width="32" height="32"/>
+  <object name="player_spawn0" type="spawn" x="224" y="864" width="32" height="32"/>
+  <object name="player_spawn0" type="spawn" x="192" y="864" width="32" height="32"/>
+  <object name="player_spawn0" type="spawn" x="160" y="896" width="32" height="32"/>
+  <object name="player_spawn0" type="spawn" x="192" y="896" width="32" height="32"/>
+  <object name="player_spawn0" type="spawn" x="224" y="896" width="32" height="32"/>
+  <object name="enemy_start0" type="enemy" x="256" y="128" width="32" height="32"/>
+  <object name="enemy_start0" type="enemy" x="672" y="128" width="32" height="32"/>
+  <object name="enemy_start0" type="enemy" x="864" y="768" width="32" height="32"/>
+  <object name="enemy_start0" type="enemy" x="736" y="448" width="32" height="32"/>
+ </objectgroup>
+ <objectgroup name="navmesh" width="32" height="32">
+  <object x="416" y="224" width="32" height="32"/>
+  <object x="448" y="192" width="32" height="32"/>
+  <object x="448" y="224" width="32" height="32"/>
+  <object x="480" y="192" width="32" height="32"/>
+  <object x="480" y="224" width="32" height="32"/>
+  <object x="544" y="192" width="32" height="32"/>
+  <object x="544" y="224" width="32" height="32"/>
+  <object x="576" y="224" width="32" height="32"/>
+  <object x="608" y="192" width="32" height="32"/>
+  <object x="608" y="224" width="32" height="32"/>
+  <object x="640" y="192" width="32" height="32"/>
+  <object x="640" y="224" width="32" height="32"/>
+  <object x="672" y="192" width="32" height="32"/>
+  <object x="672" y="224" width="32" height="32"/>
+  <object x="704" y="192" width="32" height="32"/>
+  <object x="704" y="224" width="32" height="32"/>
+  <object x="736" y="224" width="32" height="32"/>
+  <object x="832" y="160" width="64" height="64"/>
+  <object x="864" y="224" width="32" height="32"/>
+  <object x="832" y="256" width="64" height="32"/>
+  <object x="800" y="320" width="32" height="96"/>
+  <object x="768" y="352" width="32" height="32"/>
+  <object x="832" y="352" width="32" height="64"/>
+  <object x="864" y="480" width="32" height="64"/>
+  <object x="832" y="512" width="32" height="64"/>
+  <object x="800" y="544" width="32" height="64"/>
+  <object x="736" y="608" width="64" height="32"/>
+  <object x="896" y="608" width="32" height="64"/>
+  <object x="864" y="640" width="32" height="32"/>
+  <object x="768" y="896" width="64" height="32"/>
+  <object x="864" y="832" width="64" height="64"/>
+  <object x="736" y="736" width="96" height="128"/>
+  <object x="704" y="736" width="32" height="192"/>
+  <object x="736" y="864" width="64" height="32"/>
+  <object x="736" y="896" width="32" height="32"/>
+  <object x="736" y="704" width="64" height="32"/>
+  <object x="0" y="0" width="1024" height="64"/>
+  <object x="960" y="64" width="64" height="960"/>
+  <object x="0" y="960" width="960" height="64"/>
+  <object x="0" y="64" width="64" height="896"/>
+  <object x="576" y="800" width="32" height="32"/>
+  <object x="608" y="800" width="32" height="32"/>
+  <object x="608" y="832" width="32" height="32"/>
+  <object x="640" y="832" width="32" height="32"/>
+  <object x="640" y="864" width="32" height="32"/>
+  <object x="672" y="864" width="32" height="32"/>
+  <object x="672" y="896" width="32" height="32"/>
+  <object x="160" y="768" width="64" height="64"/>
+  <object x="224" y="800" width="64" height="32"/>
+  <object x="288" y="800" width="32" height="32"/>
+  <object x="160" y="640" width="32" height="64"/>
+  <object x="192" y="672" width="32" height="32"/>
+  <object x="224" y="640" width="32" height="32"/>
+  <object x="224" y="672" width="32" height="32"/>
+  <object x="224" y="704" width="32" height="32"/>
+  <object x="256" y="608" width="32" height="32"/>
+  <object x="256" y="640" width="32" height="32"/>
+  <object x="288" y="608" width="32" height="32"/>
+  <object x="288" y="640" width="32" height="32"/>
+  <object x="320" y="640" width="32" height="32"/>
+  <object x="576" y="608" width="64" height="32"/>
+  <object x="544" y="640" width="64" height="32"/>
+  <object x="544" y="672" width="32" height="32"/>
+  <object x="448" y="512" width="64" height="64"/>
+  <object x="416" y="544" width="32" height="32"/>
+  <object x="192" y="512" width="64" height="32"/>
+  <object x="256" y="480" width="32" height="64"/>
+  <object x="288" y="448" width="32" height="64"/>
+  <object x="320" y="416" width="32" height="64"/>
+  <object x="416" y="352" width="64" height="32"/>
+  <object x="448" y="384" width="64" height="32"/>
+  <object x="448" y="416" width="96" height="32"/>
+  <object x="224" y="224" width="32" height="64"/>
+  <object x="256" y="256" width="64" height="32"/>
+  <object x="128" y="288" width="32" height="64"/>
+  <object x="160" y="320" width="64" height="32"/>
+  <object x="128" y="192" width="64" height="32"/>
+  <object x="96" y="224" width="64" height="32"/>
+  <object x="64" y="64" width="896" height="32"/>
+  <object x="928" y="96" width="32" height="864"/>
+  <object x="64" y="928" width="864" height="32"/>
+  <object x="64" y="96" width="32" height="832"/>
+ </objectgroup>
+</map>

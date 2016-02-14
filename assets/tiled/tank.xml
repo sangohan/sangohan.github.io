@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with TexturePacker http://texturepacker.com-->
+<!-- $TexturePacker:SmartUpdate:5937f1abfe37a55c1825704d48ec3579$ -->
+<!--Format:
+n  => name of the sprite
+x  => sprite x pos in texture
+y  => sprite y pos in texture
+w  => sprite width (may be trimmed)
+h  => sprite height (may be trimmed)
+oX => sprite's x-corner offset (only available if trimmed)
+oY => sprite's y-corner offset (only available if trimmed)
+oW => sprite's original width (only available if trimmed)
+oH => sprite's original height (only available if trimmed)
+r => 'y' only set if sprite is rotated
+-->
+<TextureAtlas imagePath="tank.png" width="1024" height="2048">
+    <sprite n="barrelBeige.png" x="128" y="1920" w="128" h="128"/>
+    <sprite n="barrelBeige_outline.png" x="128" y="1792" w="128" h="128"/>
+    <sprite n="barrelBlack.png" x="128" y="1664" w="128" h="128"/>
+    <sprite n="barrelBlack_outline.png" x="128" y="1536" w="128" h="128"/>
+    <sprite n="barrelBlue.png" x="128" y="1408" w="128" h="128"/>
+    <sprite n="barrelBlue_outline.png" x="128" y="1280" w="128" h="128"/>
+    <sprite n="barrelGreen.png" x="128" y="1152" w="128" h="128"/>
+    <sprite n="barrelGreen_outline.png" x="896" y="1024" w="128" h="128"/>
+    <sprite n="barrelGreen_side.png" x="768" y="1024" w="128" h="128"/>
+    <sprite n="barrelGreen_side_damaged.png" x="640" y="1024" w="128" h="128"/>
+    <sprite n="barrelGreen_up.png" x="512" y="1024" w="128" h="128"/>
+    <sprite n="barrelGrey_sde_rust.png" x="384" y="1024" w="128" h="128"/>
+    <sprite n="barrelGrey_side.png" x="256" y="1024" w="128" h="128"/>
+    <sprite n="barrelGrey_up.png" x="128" y="1024" w="128" h="128"/>
+    <sprite n="barrelRed.png" x="0" y="1920" w="128" h="128"/>
+    <sprite n="barrelRed_outline.png" x="0" y="1792" w="128" h="128"/>
+    <sprite n="barrelRed_side.png" x="0" y="1664" w="128" h="128"/>
+    <sprite n="barrelRed_up.png" x="0" y="1536" w="128" h="128"/>
+    <sprite n="bulletBeige.png" x="0" y="1408" w="128" h="128"/>
+    <sprite n="bulletBeigeSilver.png" x="0" y="1280" w="128" h="128"/>
+    <sprite n="bulletBeigeSilver_outline.png" x="0" y="1152" w="128" h="128"/>
+    <sprite n="bulletBeige_outline.png" x="0" y="1024" w="128" h="128"/>
+    <sprite n="bulletBlue.png" x="896" y="896" w="128" h="128"/>
+    <sprite n="bulletBlueSilver.png" x="768" y="896" w="128" h="128"/>
+    <sprite n="bulletBlueSilver_outline.png" x="640" y="896" w="128" h="128"/>
+    <sprite n="bulletBlue_outline.png" x="512" y="896" w="128" h="128"/>
+    <sprite n="bulletGreen.png" x="384" y="896" w="128" h="128"/>
+    <sprite n="bulletGreenSilver.png" x="256" y="896" w="128" h="128"/>
+    <sprite n="bulletGreenSilver_outline.png" x="128" y="896" w="128" h="128"/>
+    <sprite n="bulletGreen_outline.png" x="0" y="896" w="128" h="128"/>
+    <sprite n="bulletRed.png" x="896" y="768" w="128" h="128"/>
+    <sprite n="bulletRedSilver.png" x="768" y="768" w="128" h="128"/>
+    <sprite n="bulletRedSilver_outline.png" x="640" y="768" w="128" h="128"/>
+    <sprite n="bulletRed_outline.png" x="512" y="768" w="128" h="128"/>
+    <sprite n="bulletSilver.png" x="384" y="768" w="128" h="128"/>
+    <sprite n="bulletSilverSilver.png" x="256" y="768" w="128" h="128"/>
+    <sprite n="bulletSilverSilver_outline.png" x="128" y="768" w="128" h="128"/>
+    <sprite n="bulletSilver_outline.png" x="0" y="768" w="128" h="128"/>
+    <sprite n="bulletYellow.png" x="896" y="640" w="128" h="128"/>
+    <sprite n="bulletYellowSilver.png" x="768" y="640" w="128" h="128"/>
+    <sprite n="bulletYellowSilver_outline.png" x="640" y="640" w="128" h="128"/>
+    <sprite n="bulletYellow_outline.png" x="512" y="640" w="128" h="128"/>
+    <sprite n="dirt.png" x="384" y="640" w="128" h="128"/>
+    <sprite n="grass.png" x="256" y="640" w="128" h="128"/>
+    <sprite n="oil.png" x="128" y="640" w="128" h="128"/>
+    <sprite n="sand.png" x="0" y="640" w="128" h="128"/>
+    <sprite n="sandbagBeige.png" x="896" y="512" w="128" h="128"/>
+    <sprite n="sandbagBrown.png" x="768" y="512" w="128" h="128"/>
+    <sprite n="smokeGrey0.png" x="640" y="512" w="128" h="128"/>
+    <sprite n="smokeGrey1.png" x="512" y="512" w="128" h="128"/>
+    <sprite n="smokeGrey2.png" x="384" y="512" w="128" h="128"/>
+    <sprite n="smokeGrey3.png" x="256" y="512" w="128" h="128"/>
+    <sprite n="smokeGrey4.png" x="128" y="512" w="128" h="128"/>
+    <sprite n="smokeGrey5.png" x="0" y="512" w="128" h="128"/>
+    <sprite n="smokeOrange0.png" x="896" y="384" w="128" h="128"/>
+    <sprite n="smokeOrange1.png" x="768" y="384" w="128" h="128"/>
+    <sprite n="smokeOrange2.png" x="640" y="384" w="128" h="128"/>
+    <sprite n="smokeOrange3.png" x="512" y="384" w="128" h="128"/>
+    <sprite n="smokeOrange4.png" x="384" y="384" w="128" h="128"/>
+    <sprite n="smokeOrange5.png" x="256" y="384" w="128" h="128"/>
+    <sprite n="smokeWhite0.png" x="128" y="384" w="128" h="128"/>
+    <sprite n="smokeWhite1.png" x="0" y="384" w="128" h="128"/>
+    <sprite n="smokeWhite2.png" x="896" y="256" w="128" h="128"/>
+    <sprite n="smokeWhite3.png" x="768" y="256" w="128" h="128"/>
+    <sprite n="smokeWhite4.png" x="640" y="256" w="128" h="128"/>
+    <sprite n="smokeWhite5.png" x="512" y="256" w="128" h="128"/>
+    <sprite n="smokeYellow0.png" x="384" y="256" w="128" h="128"/>
+    <sprite n="smokeYellow1.png" x="256" y="256" w="128" h="128"/>
+    <sprite n="smokeYellow2.png" x="128" y="256" w="128" h="128"/>
+    <sprite n="smokeYellow3.png" x="0" y="256" w="128" h="128"/>
+    <sprite n="smokeYellow4.png" x="896" y="128" w="128" h="128"/>
+    <sprite n="smokeYellow5.png" x="768" y="128" w="128" h="128"/>
+    <sprite n="tankBeige.png" x="640" y="128" w="128" h="128"/>
+    <sprite n="tankBeige_outline.png" x="512" y="128" w="128" h="128"/>
+    <sprite n="tankBlack.png" x="384" y="128" w="128" h="128"/>
+    <sprite n="tankBlack_outline.png" x="256" y="128" w="128" h="128"/>
+    <sprite n="tankBlue.png" x="128" y="128" w="128" h="128"/>
+    <sprite n="tankBlue_outline.png" x="0" y="128" w="128" h="128"/>
+    <sprite n="tankGreen.png" x="896" y="0" w="128" h="128"/>
+    <sprite n="tankGreen_outline.png" x="768" y="0" w="128" h="128"/>
+    <sprite n="tankRed.png" x="640" y="0" w="128" h="128"/>
+    <sprite n="tankRed_outline.png" x="512" y="0" w="128" h="128"/>
+    <sprite n="tracksLarge.png" x="384" y="0" w="128" h="128"/>
+    <sprite n="tracksSmall.png" x="256" y="0" w="128" h="128"/>
+    <sprite n="treeLarge.png" x="128" y="0" w="128" h="128"/>
+    <sprite n="treeSmall.png" x="0" y="0" w="128" h="128"/>
+</TextureAtlas>
