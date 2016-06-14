@@ -111,7 +111,7 @@ ApplicationMain.init = function() {
 	if(total == 0) ApplicationMain.start();
 };
 ApplicationMain.main = function() {
-	ApplicationMain.config = { build : "43", company : "HaxeFlixel", file : "TiledEditor", fps : 60, name : "TiledEditor", orientation : "portrait", packageName : "com.example.myapp", version : "0.0.1", windows : [{ antialiasing : 0, background : 0, borderless : false, depthBuffer : false, display : 0, fullscreen : false, hardware : false, height : 768, parameters : "{}", resizable : true, stencilBuffer : true, title : "TiledEditor", vsync : true, width : 1024, x : null, y : null}]};
+	ApplicationMain.config = { build : "44", company : "HaxeFlixel", file : "TiledEditor", fps : 60, name : "TiledEditor", orientation : "portrait", packageName : "com.example.myapp", version : "0.0.1", windows : [{ antialiasing : 0, background : 0, borderless : false, depthBuffer : false, display : 0, fullscreen : false, hardware : false, height : 768, parameters : "{}", resizable : true, stencilBuffer : true, title : "TiledEditor", vsync : true, width : 1024, x : null, y : null}]};
 };
 ApplicationMain.start = function() {
 	var hasMain = false;
@@ -1563,7 +1563,6 @@ Main.prototype = $extend(openfl_display_Sprite.prototype,{
 			this.gameWidth = Math.ceil(stageWidth / this.zoom);
 			this.gameHeight = Math.ceil(stageHeight / this.zoom);
 		}
-		this.addChild(new flixel_FlxGame(this.gameWidth,this.gameHeight,this.initialState,this.zoom,this.framerate,this.framerate,this.skipSplash,this.startFullscreen));
 		this._view = new away3d_containers_View3D();
 		this.addChild(this._view);
 		this._view.get_camera().set_z(-600);
