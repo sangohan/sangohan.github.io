@@ -111,7 +111,7 @@ ApplicationMain.init = function() {
 	if(total == 0) ApplicationMain.start();
 };
 ApplicationMain.main = function() {
-	ApplicationMain.config = { build : "44", company : "HaxeFlixel", file : "TiledEditor", fps : 60, name : "TiledEditor", orientation : "portrait", packageName : "com.example.myapp", version : "0.0.1", windows : [{ antialiasing : 0, background : 0, borderless : false, depthBuffer : false, display : 0, fullscreen : false, hardware : false, height : 768, parameters : "{}", resizable : true, stencilBuffer : true, title : "TiledEditor", vsync : true, width : 1024, x : null, y : null}]};
+	ApplicationMain.config = { build : "45", company : "HaxeFlixel", file : "TiledEditor", fps : 60, name : "TiledEditor", orientation : "portrait", packageName : "com.example.myapp", version : "0.0.1", windows : [{ antialiasing : 0, background : 0, borderless : false, depthBuffer : false, display : 0, fullscreen : false, hardware : false, height : 768, parameters : "{}", resizable : true, stencilBuffer : true, title : "TiledEditor", vsync : true, width : 1024, x : null, y : null}]};
 };
 ApplicationMain.start = function() {
 	var hasMain = false;
@@ -312,6 +312,7 @@ var openfl_display_DisplayObject = function() {
 	this.__worldAlpha = 1;
 	this.__worldTransform = new openfl_geom_Matrix();
 	this.__worldColorTransform = new openfl_geom_ColorTransform();
+	this.__worldVisible = true;
 	this.set_name("instance" + ++openfl_display_DisplayObject.__instanceCount);
 };
 $hxClasses["openfl.display.DisplayObject"] = openfl_display_DisplayObject;
@@ -643,13 +644,36 @@ openfl_display_DisplayObject.prototype = $extend(openfl_events_EventDispatcher.p
 			}
 		}
 		if(!transformOnly) {
+			this.__worldTransformChanged = !this.__worldTransform.equals(this.__worldTransformCache);
+			if(this.__worldTransformCache == null) this.__worldTransformCache = this.__worldTransform.clone(); else this.__worldTransformCache.copyFrom(this.__worldTransform);
+			var worldClip = null;
 			if(!this.__worldColorTransform.__equals(this.get_transform().get_colorTransform())) this.__worldColorTransform = this.get_transform().get_colorTransform().__clone();
 			if(this.parent != null) {
-				this.__worldAlpha = this.get_alpha() * this.parent.__worldAlpha;
-				this.__worldColorTransform.__combine(this.parent.__worldColorTransform);
-				if(this.blendMode == null || this.blendMode == 10) this.__blendMode = this.parent.__blendMode;
-				if(this.shader == null) this.__shader = this.parent.__shader;
-			} else this.__worldAlpha = this.get_alpha();
+				var worldVisible = this.parent.__worldVisible && this.get_visible();
+				this.__worldVisibleChanged = this.__worldVisible != worldVisible;
+				this.__worldVisible = worldVisible;
+				var worldAlpha = this.get_alpha() * this.parent.__worldAlpha;
+				this.__worldAlphaChanged = this.__worldAlpha != worldAlpha;
+				this.__worldAlpha = worldAlpha;
+				if(this.parent.__worldClip != null) worldClip = this.parent.__worldClip.clone();
+				if(this.get_scrollRect() != null) {
+					var bounds = this.get_scrollRect().clone();
+					bounds.__transform(bounds,this.__worldTransform);
+					if(worldClip != null) bounds.__contract(worldClip.x - this.get_scrollRect().x,worldClip.y - this.get_scrollRect().y,worldClip.width,worldClip.height);
+					worldClip = bounds;
+				}
+			} else {
+				this.__worldAlpha = this.get_alpha();
+				this.__worldVisibleChanged = this.__worldVisible != this.get_visible();
+				this.__worldVisible = this.get_visible();
+				this.__worldAlphaChanged = this.__worldAlpha != this.get_alpha();
+				if(this.get_scrollRect() != null) {
+					worldClip = this.get_scrollRect().clone();
+					worldClip.__transform(worldClip,this.__worldTransform);
+				}
+			}
+			this.__worldClipChanged = worldClip == null && this.__worldClip != null || worldClip != null && !worldClip.equals(this.__worldClip);
+			this.__worldClip = worldClip;
 			if(updateChildren && this.__renderDirty) this.__renderDirty = false;
 		}
 	}
@@ -919,6 +943,12 @@ openfl_display_DisplayObject.prototype = $extend(openfl_events_EventDispatcher.p
 			if(!this.__transformDirty) {
 				this.__transformDirty = true;
 				openfl_display_DisplayObject.__worldTransformDirty++;
+			}
+			if(!this.__renderDirty) {
+				this.__updateCachedBitmap = true;
+				this.__updateFilters = this.get_filters() != null && this.get_filters().length > 0;
+				this.__renderDirty = true;
+				openfl_display_DisplayObject.__worldRenderDirty++;
 			}
 		}
 		return this.__scrollRect = value;
@@ -1432,7 +1462,7 @@ openfl_display_DisplayObjectContainer.prototype = $extend(openfl_display_Interac
 	}
 	,__update: function(transformOnly,updateChildren,maskGraphics) {
 		openfl_display_InteractiveObject.prototype.__update.call(this,transformOnly,updateChildren,maskGraphics);
-		if(!this.__renderable && !this.__isMask) return;
+		if(!this.__renderable && !this.__isMask && !this.__worldAlphaChanged && !this.__worldClipChanged && !this.__worldTransformChanged && !this.__worldVisibleChanged) return;
 		if(updateChildren) {
 			var _g = 0;
 			var _g1 = this.__children;
@@ -36814,7 +36844,7 @@ flixel_addons_editors_tiled_TiledLayer.prototype = {
 					throw new js__$Boot_HaxeError("TiledLayer - data compression type not supported!");
 				}
 			}
-			if(compressed) throw new js__$Boot_HaxeError("HTML5 doesn't support compressed data! Use Base64 (uncompressed) when you save the map or install the library 'format' and use it");
+			if(compressed) result.uncompress();
 		}
 		result.__endian = 1;
 		return result;
@@ -46985,6 +47015,1713 @@ flixel_util_loaders_TextureRegion.prototype = {
 	}
 	,__class__: flixel_util_loaders_TextureRegion
 };
+var format_png_Color = $hxClasses["format.png.Color"] = { __ename__ : ["format","png","Color"], __constructs__ : ["ColGrey","ColTrue","ColIndexed"] };
+format_png_Color.ColGrey = function(alpha) { var $x = ["ColGrey",0,alpha]; $x.__enum__ = format_png_Color; $x.toString = $estr; return $x; };
+format_png_Color.ColTrue = function(alpha) { var $x = ["ColTrue",1,alpha]; $x.__enum__ = format_png_Color; $x.toString = $estr; return $x; };
+format_png_Color.ColIndexed = ["ColIndexed",2];
+format_png_Color.ColIndexed.toString = $estr;
+format_png_Color.ColIndexed.__enum__ = format_png_Color;
+var format_png_Chunk = $hxClasses["format.png.Chunk"] = { __ename__ : ["format","png","Chunk"], __constructs__ : ["CEnd","CHeader","CData","CPalette","CUnknown"] };
+format_png_Chunk.CEnd = ["CEnd",0];
+format_png_Chunk.CEnd.toString = $estr;
+format_png_Chunk.CEnd.__enum__ = format_png_Chunk;
+format_png_Chunk.CHeader = function(h) { var $x = ["CHeader",1,h]; $x.__enum__ = format_png_Chunk; $x.toString = $estr; return $x; };
+format_png_Chunk.CData = function(b) { var $x = ["CData",2,b]; $x.__enum__ = format_png_Chunk; $x.toString = $estr; return $x; };
+format_png_Chunk.CPalette = function(b) { var $x = ["CPalette",3,b]; $x.__enum__ = format_png_Chunk; $x.toString = $estr; return $x; };
+format_png_Chunk.CUnknown = function(id,data) { var $x = ["CUnknown",4,id,data]; $x.__enum__ = format_png_Chunk; $x.toString = $estr; return $x; };
+var format_png_Reader = function(i) {
+	this.i = i;
+	i.set_bigEndian(true);
+	this.checkCRC = true;
+};
+$hxClasses["format.png.Reader"] = format_png_Reader;
+format_png_Reader.__name__ = ["format","png","Reader"];
+format_png_Reader.prototype = {
+	i: null
+	,checkCRC: null
+	,read: function() {
+		var _g = 0;
+		var _g1 = [137,80,78,71,13,10,26,10];
+		while(_g < _g1.length) {
+			var b = _g1[_g];
+			++_g;
+			if(this.i.readByte() != b) throw new js__$Boot_HaxeError("Invalid header");
+		}
+		var l = new List();
+		while(true) {
+			var c = this.readChunk();
+			l.add(c);
+			if(c == format_png_Chunk.CEnd) break;
+		}
+		return l;
+	}
+	,readHeader: function(i) {
+		i.set_bigEndian(true);
+		var width = i.readInt32();
+		var height = i.readInt32();
+		var colbits = i.readByte();
+		var color = i.readByte();
+		var color1;
+		switch(color) {
+		case 0:
+			color1 = format_png_Color.ColGrey(false);
+			break;
+		case 2:
+			color1 = format_png_Color.ColTrue(false);
+			break;
+		case 3:
+			color1 = format_png_Color.ColIndexed;
+			break;
+		case 4:
+			color1 = format_png_Color.ColGrey(true);
+			break;
+		case 6:
+			color1 = format_png_Color.ColTrue(true);
+			break;
+		default:
+			throw new js__$Boot_HaxeError("Unknown color model " + color + ":" + colbits);
+		}
+		var compress = i.readByte();
+		var filter = i.readByte();
+		if(compress != 0 || filter != 0) throw new js__$Boot_HaxeError("Invalid header");
+		var interlace = i.readByte();
+		if(interlace != 0 && interlace != 1) throw new js__$Boot_HaxeError("Invalid header");
+		return { width : width, height : height, colbits : colbits, color : color1, interlaced : interlace == 1};
+	}
+	,readChunk: function() {
+		var dataLen = this.i.readInt32();
+		var id = this.i.readString(4);
+		var data = this.i.read(dataLen);
+		var crc = this.i.readInt32();
+		if(this.checkCRC) {
+			var c = new haxe_crypto_Crc32();
+			var _g = 0;
+			while(_g < 4) {
+				var i = _g++;
+				c["byte"](HxOverrides.cca(id,i));
+			}
+			c.update(data,0,data.length);
+			if(c.get() != crc) throw new js__$Boot_HaxeError("CRC check failure");
+		}
+		switch(id) {
+		case "IEND":
+			return format_png_Chunk.CEnd;
+		case "IHDR":
+			return format_png_Chunk.CHeader(this.readHeader(new haxe_io_BytesInput(data)));
+		case "IDAT":
+			return format_png_Chunk.CData(data);
+		case "PLTE":
+			return format_png_Chunk.CPalette(data);
+		default:
+			return format_png_Chunk.CUnknown(id,data);
+		}
+	}
+	,__class__: format_png_Reader
+};
+var format_png_Tools = function() { };
+$hxClasses["format.png.Tools"] = format_png_Tools;
+format_png_Tools.__name__ = ["format","png","Tools"];
+format_png_Tools.getHeader = function(d) {
+	var _g_head = d.h;
+	var _g_val = null;
+	while(_g_head != null) {
+		var c;
+		c = (function($this) {
+			var $r;
+			_g_val = _g_head[0];
+			_g_head = _g_head[1];
+			$r = _g_val;
+			return $r;
+		}(this));
+		switch(c[1]) {
+		case 1:
+			var h = c[2];
+			return h;
+		default:
+		}
+	}
+	throw new js__$Boot_HaxeError("Header not found");
+};
+format_png_Tools.getPalette = function(d) {
+	var _g_head = d.h;
+	var _g_val = null;
+	while(_g_head != null) {
+		var c;
+		c = (function($this) {
+			var $r;
+			_g_val = _g_head[0];
+			_g_head = _g_head[1];
+			$r = _g_val;
+			return $r;
+		}(this));
+		switch(c[1]) {
+		case 3:
+			var b = c[2];
+			return b;
+		default:
+		}
+	}
+	return null;
+};
+format_png_Tools.filter = function(data,x,y,stride,prev,p,numChannels) {
+	if(numChannels == null) numChannels = 4;
+	var b;
+	if(y == 0) b = 0; else b = data.b[p - stride];
+	var c;
+	if(x == 0 || y == 0) c = 0; else c = data.b[p - stride - numChannels];
+	var k = prev + b - c;
+	var pa = k - prev;
+	if(pa < 0) pa = -pa;
+	var pb = k - b;
+	if(pb < 0) pb = -pb;
+	var pc = k - c;
+	if(pc < 0) pc = -pc;
+	if(pa <= pb && pa <= pc) return prev; else if(pb <= pc) return b; else return c;
+};
+format_png_Tools.reverseBytes = function(b) {
+	var p = 0;
+	var _g1 = 0;
+	var _g = b.length >> 2;
+	while(_g1 < _g) {
+		var i = _g1++;
+		var b1 = b.b[p];
+		var g = b.b[p + 1];
+		var r = b.b[p + 2];
+		var a = b.b[p + 3];
+		var p1 = p++;
+		b.b[p1] = a & 255;
+		var p2 = p++;
+		b.b[p2] = r & 255;
+		var p3 = p++;
+		b.b[p3] = g & 255;
+		var p4 = p++;
+		b.b[p4] = b1 & 255;
+	}
+};
+format_png_Tools.extractGrey = function(d) {
+	var h = format_png_Tools.getHeader(d);
+	var grey = haxe_io_Bytes.alloc(h.width * h.height);
+	var data = null;
+	var fullData = null;
+	var _g_head = d.h;
+	var _g_val = null;
+	while(_g_head != null) {
+		var c;
+		c = (function($this) {
+			var $r;
+			_g_val = _g_head[0];
+			_g_head = _g_head[1];
+			$r = _g_val;
+			return $r;
+		}(this));
+		switch(c[1]) {
+		case 2:
+			var b = c[2];
+			if(fullData != null) fullData.add(b); else if(data == null) data = b; else {
+				fullData = new haxe_io_BytesBuffer();
+				fullData.add(data);
+				fullData.add(b);
+				data = null;
+			}
+			break;
+		default:
+		}
+	}
+	if(fullData != null) data = fullData.getBytes();
+	if(data == null) throw new js__$Boot_HaxeError("Data not found");
+	data = format_tools_Inflate.run(data);
+	var r = 0;
+	var w = 0;
+	{
+		var _g = h.color;
+		switch(_g[1]) {
+		case 0:
+			var alpha = _g[2];
+			if(h.colbits != 8) throw new js__$Boot_HaxeError("Unsupported color mode");
+			var width = h.width;
+			var stride;
+			stride = (alpha?2:1) * width + 1;
+			if(data.length < h.height * stride) throw new js__$Boot_HaxeError("Not enough data");
+			var rinc;
+			if(alpha) rinc = 2; else rinc = 1;
+			var _g2 = 0;
+			var _g1 = h.height;
+			while(_g2 < _g1) {
+				var y = _g2++;
+				var f = data.get(r++);
+				switch(f) {
+				case 0:
+					var _g3 = 0;
+					while(_g3 < width) {
+						var x = _g3++;
+						var v = data.b[r];
+						r += rinc;
+						grey.set(w++,v);
+					}
+					break;
+				case 1:
+					var cv = 0;
+					var _g31 = 0;
+					while(_g31 < width) {
+						var x1 = _g31++;
+						cv += data.b[r];
+						r += rinc;
+						grey.set(w++,cv);
+					}
+					break;
+				case 2:
+					var stride1;
+					if(y == 0) stride1 = 0; else stride1 = width;
+					var _g32 = 0;
+					while(_g32 < width) {
+						var x2 = _g32++;
+						var v1 = data.b[r] + grey.b[w - stride1];
+						r += rinc;
+						grey.set(w++,v1);
+					}
+					break;
+				case 3:
+					var cv1 = 0;
+					var stride2;
+					if(y == 0) stride2 = 0; else stride2 = width;
+					var _g33 = 0;
+					while(_g33 < width) {
+						var x3 = _g33++;
+						cv1 = data.b[r] + (cv1 + grey.b[w - stride2] >> 1) & 255;
+						r += rinc;
+						grey.set(w++,cv1);
+					}
+					break;
+				case 4:
+					var stride3 = width;
+					var cv2 = 0;
+					var _g34 = 0;
+					while(_g34 < width) {
+						var x4 = _g34++;
+						cv2 = format_png_Tools.filter(grey,x4,y,stride3,cv2,w,1) + data.b[r] & 255;
+						r += rinc;
+						grey.set(w++,cv2);
+					}
+					break;
+				default:
+					throw new js__$Boot_HaxeError("Invalid filter " + f);
+				}
+			}
+			break;
+		default:
+			throw new js__$Boot_HaxeError("Unsupported color mode");
+		}
+	}
+	return grey;
+};
+format_png_Tools.extract32 = function(d,bytes) {
+	var h = format_png_Tools.getHeader(d);
+	var bgra;
+	if(bytes == null) bgra = haxe_io_Bytes.alloc(h.width * h.height * 4); else bgra = bytes;
+	var data = null;
+	var fullData = null;
+	var _g_head = d.h;
+	var _g_val = null;
+	while(_g_head != null) {
+		var c;
+		c = (function($this) {
+			var $r;
+			_g_val = _g_head[0];
+			_g_head = _g_head[1];
+			$r = _g_val;
+			return $r;
+		}(this));
+		switch(c[1]) {
+		case 2:
+			var b = c[2];
+			if(fullData != null) fullData.add(b); else if(data == null) data = b; else {
+				fullData = new haxe_io_BytesBuffer();
+				fullData.add(data);
+				fullData.add(b);
+				data = null;
+			}
+			break;
+		default:
+		}
+	}
+	if(fullData != null) data = fullData.getBytes();
+	if(data == null) throw new js__$Boot_HaxeError("Data not found");
+	data = format_tools_Inflate.run(data);
+	var r = 0;
+	var w = 0;
+	{
+		var _g = h.color;
+		switch(_g[1]) {
+		case 2:
+			var pal = format_png_Tools.getPalette(d);
+			if(pal == null) throw new js__$Boot_HaxeError("PNG Palette is missing");
+			var alpha = null;
+			var _g1_head = d.h;
+			var _g1_val = null;
+			try {
+				while(_g1_head != null) {
+					var t;
+					t = (function($this) {
+						var $r;
+						_g1_val = _g1_head[0];
+						_g1_head = _g1_head[1];
+						$r = _g1_val;
+						return $r;
+					}(this));
+					switch(t[1]) {
+					case 4:
+						switch(t[2]) {
+						case "tRNS":
+							var data1 = t[3];
+							alpha = data1;
+							throw "__break__";
+							break;
+						default:
+						}
+						break;
+					default:
+					}
+				}
+			} catch( e ) { if( e != "__break__" ) throw e; }
+			if(alpha != null && alpha.length < 1 << h.colbits) {
+				var alpha2 = haxe_io_Bytes.alloc(1 << h.colbits);
+				alpha2.blit(0,alpha,0,alpha.length);
+				alpha2.fill(alpha.length,alpha2.length - alpha.length,255);
+				alpha = alpha2;
+			}
+			var width = h.width;
+			var stride = Math.ceil(width * h.colbits / 8) + 1;
+			if(data.length < h.height * stride) throw new js__$Boot_HaxeError("Not enough data");
+			var vr;
+			var vg;
+			var vb;
+			var va = 255;
+			if(h.colbits == 8) {
+				var _g2 = 0;
+				var _g1 = h.height;
+				while(_g2 < _g1) {
+					var y = _g2++;
+					var f = data.get(r++);
+					switch(f) {
+					case 0:
+						var _g11 = 0;
+						while(_g11 < width) {
+							var x = _g11++;
+							var c1 = data.get(r++);
+							vr = pal.b[c1 * 3];
+							vg = pal.b[c1 * 3 + 1];
+							vb = pal.b[c1 * 3 + 2];
+							if(alpha != null) va = alpha.b[c1];
+							bgra.set(w++,vb);
+							bgra.set(w++,vg);
+							bgra.set(w++,vr);
+							bgra.set(w++,va);
+						}
+						break;
+					case 1:
+						var cr = 0;
+						var cg = 0;
+						var cb = 0;
+						var ca = 0;
+						var _g12 = 0;
+						while(_g12 < width) {
+							var x1 = _g12++;
+							var c2 = data.get(r++);
+							vr = pal.b[c2 * 3];
+							vg = pal.b[c2 * 3 + 1];
+							vb = pal.b[c2 * 3 + 2];
+							if(alpha != null) va = alpha.b[c2];
+							cb += vb;
+							bgra.set(w++,cb);
+							cg += vg;
+							bgra.set(w++,cg);
+							cr += vr;
+							bgra.set(w++,cr);
+							ca += va;
+							bgra.set(w++,ca);
+							bgra.set(w++,va);
+						}
+						break;
+					case 2:
+						var stride1;
+						if(y == 0) stride1 = 0; else stride1 = width * 4;
+						var _g13 = 0;
+						while(_g13 < width) {
+							var x2 = _g13++;
+							var c3 = data.get(r++);
+							vr = pal.b[c3 * 3];
+							vg = pal.b[c3 * 3 + 1];
+							vb = pal.b[c3 * 3 + 2];
+							if(alpha != null) va = alpha.b[c3];
+							bgra.b[w] = vb + bgra.b[w - stride1] & 255;
+							w++;
+							bgra.b[w] = vg + bgra.b[w - stride1] & 255;
+							w++;
+							bgra.b[w] = vr + bgra.b[w - stride1] & 255;
+							w++;
+							bgra.b[w] = va + bgra.b[w - stride1] & 255;
+							w++;
+						}
+						break;
+					case 3:
+						var cr1 = 0;
+						var cg1 = 0;
+						var cb1 = 0;
+						var ca1 = 0;
+						var stride2;
+						if(y == 0) stride2 = 0; else stride2 = width * 4;
+						var _g14 = 0;
+						while(_g14 < width) {
+							var x3 = _g14++;
+							var c4 = data.get(r++);
+							vr = pal.b[c4 * 3];
+							vg = pal.b[c4 * 3 + 1];
+							vb = pal.b[c4 * 3 + 2];
+							if(alpha != null) va = alpha.b[c4];
+							cb1 = vb + (cb1 + bgra.b[w - stride2] >> 1) & 255;
+							bgra.set(w++,cb1);
+							cg1 = vg + (cg1 + bgra.b[w - stride2] >> 1) & 255;
+							bgra.set(w++,cg1);
+							cr1 = vr + (cr1 + bgra.b[w - stride2] >> 1) & 255;
+							bgra.set(w++,cr1);
+							cr1 = va + (ca1 + bgra.b[w - stride2] >> 1) & 255;
+							bgra.set(w++,ca1);
+						}
+						break;
+					case 4:
+						var stride3 = width * 4;
+						var cr2 = 0;
+						var cg2 = 0;
+						var cb2 = 0;
+						var ca2 = 0;
+						var _g15 = 0;
+						while(_g15 < width) {
+							var x4 = _g15++;
+							var c5 = data.get(r++);
+							vr = pal.b[c5 * 3];
+							vg = pal.b[c5 * 3 + 1];
+							vb = pal.b[c5 * 3 + 2];
+							if(alpha != null) va = alpha.b[c5];
+							cb2 = format_png_Tools.filter(bgra,x4,y,stride3,cb2,w,null) + vb & 255;
+							bgra.set(w++,cb2);
+							cg2 = format_png_Tools.filter(bgra,x4,y,stride3,cg2,w,null) + vg & 255;
+							bgra.set(w++,cg2);
+							cr2 = format_png_Tools.filter(bgra,x4,y,stride3,cr2,w,null) + vr & 255;
+							bgra.set(w++,cr2);
+							ca2 = format_png_Tools.filter(bgra,x4,y,stride3,ca2,w,null) + va & 255;
+							bgra.set(w++,ca2);
+						}
+						break;
+					default:
+						throw new js__$Boot_HaxeError("Invalid filter " + f);
+					}
+				}
+			} else if(h.colbits < 8) {
+				var req = h.colbits;
+				var mask = (1 << req) - 1;
+				var _g21 = 0;
+				var _g16 = h.height;
+				while(_g21 < _g16) {
+					var y1 = _g21++;
+					var f1 = data.get(r++);
+					var bits = 0;
+					var nbits = 0;
+					var v;
+					switch(f1) {
+					case 0:
+						var _g17 = 0;
+						while(_g17 < width) {
+							var x5 = _g17++;
+							var c6;
+							if(nbits < req) {
+								bits = bits << 8 | data.get(r++);
+								nbits += 8;
+							}
+							v = bits >>> nbits - req & mask;
+							nbits -= req;
+							c6 = v;
+							vr = pal.b[c6 * 3];
+							vg = pal.b[c6 * 3 + 1];
+							vb = pal.b[c6 * 3 + 2];
+							if(alpha != null) va = alpha.b[c6];
+							bgra.set(w++,vb);
+							bgra.set(w++,vg);
+							bgra.set(w++,vr);
+							bgra.set(w++,va);
+						}
+						break;
+					case 1:
+						var cr3 = 0;
+						var cg3 = 0;
+						var cb3 = 0;
+						var ca3 = 0;
+						var _g18 = 0;
+						while(_g18 < width) {
+							var x6 = _g18++;
+							var c7;
+							if(nbits < req) {
+								bits = bits << 8 | data.get(r++);
+								nbits += 8;
+							}
+							v = bits >>> nbits - req & mask;
+							nbits -= req;
+							c7 = v;
+							vr = pal.b[c7 * 3];
+							vg = pal.b[c7 * 3 + 1];
+							vb = pal.b[c7 * 3 + 2];
+							if(alpha != null) va = alpha.b[c7];
+							cb3 += vb;
+							bgra.set(w++,cb3);
+							cg3 += vg;
+							bgra.set(w++,cg3);
+							cr3 += vr;
+							bgra.set(w++,cr3);
+							ca3 += va;
+							bgra.set(w++,ca3);
+							bgra.set(w++,va);
+						}
+						break;
+					case 2:
+						var stride4;
+						if(y1 == 0) stride4 = 0; else stride4 = width * 4;
+						var _g19 = 0;
+						while(_g19 < width) {
+							var x7 = _g19++;
+							var c8;
+							if(nbits < req) {
+								bits = bits << 8 | data.get(r++);
+								nbits += 8;
+							}
+							v = bits >>> nbits - req & mask;
+							nbits -= req;
+							c8 = v;
+							vr = pal.b[c8 * 3];
+							vg = pal.b[c8 * 3 + 1];
+							vb = pal.b[c8 * 3 + 2];
+							if(alpha != null) va = alpha.b[c8];
+							bgra.b[w] = vb + bgra.b[w - stride4] & 255;
+							w++;
+							bgra.b[w] = vg + bgra.b[w - stride4] & 255;
+							w++;
+							bgra.b[w] = vr + bgra.b[w - stride4] & 255;
+							w++;
+							bgra.b[w] = va + bgra.b[w - stride4] & 255;
+							w++;
+						}
+						break;
+					case 3:
+						var cr4 = 0;
+						var cg4 = 0;
+						var cb4 = 0;
+						var ca4 = 0;
+						var stride5;
+						if(y1 == 0) stride5 = 0; else stride5 = width * 4;
+						var _g110 = 0;
+						while(_g110 < width) {
+							var x8 = _g110++;
+							var c9;
+							if(nbits < req) {
+								bits = bits << 8 | data.get(r++);
+								nbits += 8;
+							}
+							v = bits >>> nbits - req & mask;
+							nbits -= req;
+							c9 = v;
+							vr = pal.b[c9 * 3];
+							vg = pal.b[c9 * 3 + 1];
+							vb = pal.b[c9 * 3 + 2];
+							if(alpha != null) va = alpha.b[c9];
+							cb4 = vb + (cb4 + bgra.b[w - stride5] >> 1) & 255;
+							bgra.set(w++,cb4);
+							cg4 = vg + (cg4 + bgra.b[w - stride5] >> 1) & 255;
+							bgra.set(w++,cg4);
+							cr4 = vr + (cr4 + bgra.b[w - stride5] >> 1) & 255;
+							bgra.set(w++,cr4);
+							cr4 = va + (ca4 + bgra.b[w - stride5] >> 1) & 255;
+							bgra.set(w++,ca4);
+						}
+						break;
+					case 4:
+						var stride6 = width * 4;
+						var cr5 = 0;
+						var cg5 = 0;
+						var cb5 = 0;
+						var ca5 = 0;
+						var _g111 = 0;
+						while(_g111 < width) {
+							var x9 = _g111++;
+							var c10;
+							if(nbits < req) {
+								bits = bits << 8 | data.get(r++);
+								nbits += 8;
+							}
+							v = bits >>> nbits - req & mask;
+							nbits -= req;
+							c10 = v;
+							vr = pal.b[c10 * 3];
+							vg = pal.b[c10 * 3 + 1];
+							vb = pal.b[c10 * 3 + 2];
+							if(alpha != null) va = alpha.b[c10];
+							cb5 = format_png_Tools.filter(bgra,x9,y1,stride6,cb5,w,null) + vb & 255;
+							bgra.set(w++,cb5);
+							cg5 = format_png_Tools.filter(bgra,x9,y1,stride6,cg5,w,null) + vg & 255;
+							bgra.set(w++,cg5);
+							cr5 = format_png_Tools.filter(bgra,x9,y1,stride6,cr5,w,null) + vr & 255;
+							bgra.set(w++,cr5);
+							ca5 = format_png_Tools.filter(bgra,x9,y1,stride6,ca5,w,null) + va & 255;
+							bgra.set(w++,ca5);
+						}
+						break;
+					default:
+						throw new js__$Boot_HaxeError("Invalid filter " + f1);
+					}
+				}
+			} else throw new js__$Boot_HaxeError(h.colbits + " indexed bits per pixel not supported");
+			break;
+		case 0:
+			var alpha1 = _g[2];
+			if(h.colbits != 8) throw new js__$Boot_HaxeError("Unsupported color mode");
+			var width1 = h.width;
+			var stride7;
+			stride7 = (alpha1?2:1) * width1 + 1;
+			if(data.length < h.height * stride7) throw new js__$Boot_HaxeError("Not enough data");
+			var _g22 = 0;
+			var _g112 = h.height;
+			while(_g22 < _g112) {
+				var y2 = _g22++;
+				var f2 = data.get(r++);
+				switch(f2) {
+				case 0:
+					if(alpha1) {
+						var _g3 = 0;
+						while(_g3 < width1) {
+							var x10 = _g3++;
+							var v1 = data.get(r++);
+							bgra.set(w++,v1);
+							bgra.set(w++,v1);
+							bgra.set(w++,v1);
+							bgra.set(w++,data.get(r++));
+						}
+					} else {
+						var _g31 = 0;
+						while(_g31 < width1) {
+							var x11 = _g31++;
+							var v2 = data.get(r++);
+							bgra.set(w++,v2);
+							bgra.set(w++,v2);
+							bgra.set(w++,v2);
+							bgra.set(w++,255);
+						}
+					}
+					break;
+				case 1:
+					var cv = 0;
+					var ca6 = 0;
+					if(alpha1) {
+						var _g32 = 0;
+						while(_g32 < width1) {
+							var x12 = _g32++;
+							cv += data.get(r++);
+							bgra.set(w++,cv);
+							bgra.set(w++,cv);
+							bgra.set(w++,cv);
+							ca6 += data.get(r++);
+							bgra.set(w++,ca6);
+						}
+					} else {
+						var _g33 = 0;
+						while(_g33 < width1) {
+							var x13 = _g33++;
+							cv += data.get(r++);
+							bgra.set(w++,cv);
+							bgra.set(w++,cv);
+							bgra.set(w++,cv);
+							bgra.set(w++,255);
+						}
+					}
+					break;
+				case 2:
+					var stride8;
+					if(y2 == 0) stride8 = 0; else stride8 = width1 * 4;
+					if(alpha1) {
+						var _g34 = 0;
+						while(_g34 < width1) {
+							var x14 = _g34++;
+							var v3 = data.get(r++) + bgra.b[w - stride8];
+							bgra.set(w++,v3);
+							bgra.set(w++,v3);
+							bgra.set(w++,v3);
+							bgra.set(w++,data.get(r++) + bgra.b[w - stride8]);
+						}
+					} else {
+						var _g35 = 0;
+						while(_g35 < width1) {
+							var x15 = _g35++;
+							var v4 = data.get(r++) + bgra.b[w - stride8];
+							bgra.set(w++,v4);
+							bgra.set(w++,v4);
+							bgra.set(w++,v4);
+							bgra.set(w++,255);
+						}
+					}
+					break;
+				case 3:
+					var cv1 = 0;
+					var ca7 = 0;
+					var stride9;
+					if(y2 == 0) stride9 = 0; else stride9 = width1 * 4;
+					if(alpha1) {
+						var _g36 = 0;
+						while(_g36 < width1) {
+							var x16 = _g36++;
+							cv1 = data.get(r++) + (cv1 + bgra.b[w - stride9] >> 1) & 255;
+							bgra.set(w++,cv1);
+							bgra.set(w++,cv1);
+							bgra.set(w++,cv1);
+							ca7 = data.get(r++) + (ca7 + bgra.b[w - stride9] >> 1) & 255;
+							bgra.set(w++,ca7);
+						}
+					} else {
+						var _g37 = 0;
+						while(_g37 < width1) {
+							var x17 = _g37++;
+							cv1 = data.get(r++) + (cv1 + bgra.b[w - stride9] >> 1) & 255;
+							bgra.set(w++,cv1);
+							bgra.set(w++,cv1);
+							bgra.set(w++,cv1);
+							bgra.set(w++,255);
+						}
+					}
+					break;
+				case 4:
+					var stride10 = width1 * 4;
+					var cv2 = 0;
+					var ca8 = 0;
+					if(alpha1) {
+						var _g38 = 0;
+						while(_g38 < width1) {
+							var x18 = _g38++;
+							cv2 = format_png_Tools.filter(bgra,x18,y2,stride10,cv2,w,null) + data.get(r++) & 255;
+							bgra.set(w++,cv2);
+							bgra.set(w++,cv2);
+							bgra.set(w++,cv2);
+							ca8 = format_png_Tools.filter(bgra,x18,y2,stride10,ca8,w,null) + data.get(r++) & 255;
+							bgra.set(w++,ca8);
+						}
+					} else {
+						var _g39 = 0;
+						while(_g39 < width1) {
+							var x19 = _g39++;
+							cv2 = format_png_Tools.filter(bgra,x19,y2,stride10,cv2,w,null) + data.get(r++) & 255;
+							bgra.set(w++,cv2);
+							bgra.set(w++,cv2);
+							bgra.set(w++,cv2);
+							bgra.set(w++,255);
+						}
+					}
+					break;
+				default:
+					throw new js__$Boot_HaxeError("Invalid filter " + f2);
+				}
+			}
+			break;
+		case 1:
+			var alpha3 = _g[2];
+			if(h.colbits != 8) throw new js__$Boot_HaxeError("Unsupported color mode");
+			var width2 = h.width;
+			var stride11;
+			stride11 = (alpha3?4:3) * width2 + 1;
+			if(data.length < h.height * stride11) throw new js__$Boot_HaxeError("Not enough data");
+			var _g23 = 0;
+			var _g113 = h.height;
+			while(_g23 < _g113) {
+				var y3 = _g23++;
+				var f3 = data.get(r++);
+				switch(f3) {
+				case 0:
+					if(alpha3) {
+						var _g310 = 0;
+						while(_g310 < width2) {
+							var x20 = _g310++;
+							bgra.set(w++,data.b[r + 2]);
+							bgra.set(w++,data.b[r + 1]);
+							bgra.set(w++,data.b[r]);
+							bgra.set(w++,data.b[r + 3]);
+							r += 4;
+						}
+					} else {
+						var _g311 = 0;
+						while(_g311 < width2) {
+							var x21 = _g311++;
+							bgra.set(w++,data.b[r + 2]);
+							bgra.set(w++,data.b[r + 1]);
+							bgra.set(w++,data.b[r]);
+							bgra.set(w++,255);
+							r += 3;
+						}
+					}
+					break;
+				case 1:
+					var cr6 = 0;
+					var cg6 = 0;
+					var cb6 = 0;
+					var ca9 = 0;
+					if(alpha3) {
+						var _g312 = 0;
+						while(_g312 < width2) {
+							var x22 = _g312++;
+							cb6 += data.b[r + 2];
+							bgra.set(w++,cb6);
+							cg6 += data.b[r + 1];
+							bgra.set(w++,cg6);
+							cr6 += data.b[r];
+							bgra.set(w++,cr6);
+							ca9 += data.b[r + 3];
+							bgra.set(w++,ca9);
+							r += 4;
+						}
+					} else {
+						var _g313 = 0;
+						while(_g313 < width2) {
+							var x23 = _g313++;
+							cb6 += data.b[r + 2];
+							bgra.set(w++,cb6);
+							cg6 += data.b[r + 1];
+							bgra.set(w++,cg6);
+							cr6 += data.b[r];
+							bgra.set(w++,cr6);
+							bgra.set(w++,255);
+							r += 3;
+						}
+					}
+					break;
+				case 2:
+					var stride12;
+					if(y3 == 0) stride12 = 0; else stride12 = width2 * 4;
+					if(alpha3) {
+						var _g314 = 0;
+						while(_g314 < width2) {
+							var x24 = _g314++;
+							bgra.b[w] = data.b[r + 2] + bgra.b[w - stride12] & 255;
+							w++;
+							bgra.b[w] = data.b[r + 1] + bgra.b[w - stride12] & 255;
+							w++;
+							bgra.b[w] = data.b[r] + bgra.b[w - stride12] & 255;
+							w++;
+							bgra.b[w] = data.b[r + 3] + bgra.b[w - stride12] & 255;
+							w++;
+							r += 4;
+						}
+					} else {
+						var _g315 = 0;
+						while(_g315 < width2) {
+							var x25 = _g315++;
+							bgra.b[w] = data.b[r + 2] + bgra.b[w - stride12] & 255;
+							w++;
+							bgra.b[w] = data.b[r + 1] + bgra.b[w - stride12] & 255;
+							w++;
+							bgra.b[w] = data.b[r] + bgra.b[w - stride12] & 255;
+							w++;
+							bgra.set(w++,255);
+							r += 3;
+						}
+					}
+					break;
+				case 3:
+					var cr7 = 0;
+					var cg7 = 0;
+					var cb7 = 0;
+					var ca10 = 0;
+					var stride13;
+					if(y3 == 0) stride13 = 0; else stride13 = width2 * 4;
+					if(alpha3) {
+						var _g316 = 0;
+						while(_g316 < width2) {
+							var x26 = _g316++;
+							cb7 = data.b[r + 2] + (cb7 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,cb7);
+							cg7 = data.b[r + 1] + (cg7 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,cg7);
+							cr7 = data.b[r] + (cr7 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,cr7);
+							ca10 = data.b[r + 3] + (ca10 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,ca10);
+							r += 4;
+						}
+					} else {
+						var _g317 = 0;
+						while(_g317 < width2) {
+							var x27 = _g317++;
+							cb7 = data.b[r + 2] + (cb7 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,cb7);
+							cg7 = data.b[r + 1] + (cg7 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,cg7);
+							cr7 = data.b[r] + (cr7 + bgra.b[w - stride13] >> 1) & 255;
+							bgra.set(w++,cr7);
+							bgra.set(w++,255);
+							r += 3;
+						}
+					}
+					break;
+				case 4:
+					var stride14 = width2 * 4;
+					var cr8 = 0;
+					var cg8 = 0;
+					var cb8 = 0;
+					var ca11 = 0;
+					if(alpha3) {
+						var _g318 = 0;
+						while(_g318 < width2) {
+							var x28 = _g318++;
+							cb8 = format_png_Tools.filter(bgra,x28,y3,stride14,cb8,w,null) + data.b[r + 2] & 255;
+							bgra.set(w++,cb8);
+							cg8 = format_png_Tools.filter(bgra,x28,y3,stride14,cg8,w,null) + data.b[r + 1] & 255;
+							bgra.set(w++,cg8);
+							cr8 = format_png_Tools.filter(bgra,x28,y3,stride14,cr8,w,null) + data.b[r] & 255;
+							bgra.set(w++,cr8);
+							ca11 = format_png_Tools.filter(bgra,x28,y3,stride14,ca11,w,null) + data.b[r + 3] & 255;
+							bgra.set(w++,ca11);
+							r += 4;
+						}
+					} else {
+						var _g319 = 0;
+						while(_g319 < width2) {
+							var x29 = _g319++;
+							cb8 = format_png_Tools.filter(bgra,x29,y3,stride14,cb8,w,null) + data.b[r + 2] & 255;
+							bgra.set(w++,cb8);
+							cg8 = format_png_Tools.filter(bgra,x29,y3,stride14,cg8,w,null) + data.b[r + 1] & 255;
+							bgra.set(w++,cg8);
+							cr8 = format_png_Tools.filter(bgra,x29,y3,stride14,cr8,w,null) + data.b[r] & 255;
+							bgra.set(w++,cr8);
+							bgra.set(w++,255);
+							r += 3;
+						}
+					}
+					break;
+				default:
+					throw new js__$Boot_HaxeError("Invalid filter " + f3);
+				}
+			}
+			break;
+		}
+	}
+	return bgra;
+};
+format_png_Tools.buildGrey = function(width,height,data) {
+	var rgb = haxe_io_Bytes.alloc(width * height + height);
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	while(_g < height) {
+		var y = _g++;
+		rgb.set(w++,0);
+		var _g1 = 0;
+		while(_g1 < width) {
+			var x = _g1++;
+			rgb.set(w++,data.get(r++));
+		}
+	}
+	var l = new List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColGrey(false), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgb)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.buildRGB = function(width,height,data) {
+	var rgb = haxe_io_Bytes.alloc(width * height * 3 + height);
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	while(_g < height) {
+		var y = _g++;
+		rgb.set(w++,0);
+		var _g1 = 0;
+		while(_g1 < width) {
+			var x = _g1++;
+			rgb.set(w++,data.b[r + 2]);
+			rgb.set(w++,data.b[r + 1]);
+			rgb.set(w++,data.b[r]);
+			r += 3;
+		}
+	}
+	var l = new List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColTrue(false), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgb)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.build32ARGB = function(width,height,data) {
+	var rgba = haxe_io_Bytes.alloc(width * height * 4 + height);
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	while(_g < height) {
+		var y = _g++;
+		rgba.set(w++,0);
+		var _g1 = 0;
+		while(_g1 < width) {
+			var x = _g1++;
+			rgba.set(w++,data.b[r + 1]);
+			rgba.set(w++,data.b[r + 2]);
+			rgba.set(w++,data.b[r + 3]);
+			rgba.set(w++,data.b[r]);
+			r += 4;
+		}
+	}
+	var l = new List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColTrue(true), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgba)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+format_png_Tools.build32BGRA = function(width,height,data) {
+	var rgba = haxe_io_Bytes.alloc(width * height * 4 + height);
+	var w = 0;
+	var r = 0;
+	var _g = 0;
+	while(_g < height) {
+		var y = _g++;
+		rgba.set(w++,0);
+		var _g1 = 0;
+		while(_g1 < width) {
+			var x = _g1++;
+			rgba.set(w++,data.b[r + 2]);
+			rgba.set(w++,data.b[r + 1]);
+			rgba.set(w++,data.b[r]);
+			rgba.set(w++,data.b[r + 3]);
+			r += 4;
+		}
+	}
+	var l = new List();
+	l.add(format_png_Chunk.CHeader({ width : width, height : height, colbits : 8, color : format_png_Color.ColTrue(true), interlaced : false}));
+	l.add(format_png_Chunk.CData(format_tools_Deflate.run(rgba)));
+	l.add(format_png_Chunk.CEnd);
+	return l;
+};
+var format_png_Writer = function(o) {
+	this.o = o;
+	o.set_bigEndian(true);
+};
+$hxClasses["format.png.Writer"] = format_png_Writer;
+format_png_Writer.__name__ = ["format","png","Writer"];
+format_png_Writer.prototype = {
+	o: null
+	,write: function(png) {
+		var _g = 0;
+		var _g1 = [137,80,78,71,13,10,26,10];
+		while(_g < _g1.length) {
+			var b = _g1[_g];
+			++_g;
+			this.o.writeByte(b);
+		}
+		var _g_head = png.h;
+		var _g_val = null;
+		while(_g_head != null) {
+			var c;
+			c = (function($this) {
+				var $r;
+				_g_val = _g_head[0];
+				_g_head = _g_head[1];
+				$r = _g_val;
+				return $r;
+			}(this));
+			switch(c[1]) {
+			case 1:
+				var h = c[2];
+				var b1 = new haxe_io_BytesOutput();
+				b1.set_bigEndian(true);
+				b1.writeInt32(h.width);
+				b1.writeInt32(h.height);
+				b1.writeByte(h.colbits);
+				b1.writeByte((function($this) {
+					var $r;
+					var _g2 = h.color;
+					$r = (function($this) {
+						var $r;
+						switch(_g2[1]) {
+						case 0:
+							$r = (function($this) {
+								var $r;
+								var alpha = _g2[2];
+								$r = alpha?4:0;
+								return $r;
+							}($this));
+							break;
+						case 1:
+							$r = (function($this) {
+								var $r;
+								var alpha1 = _g2[2];
+								$r = alpha1?6:2;
+								return $r;
+							}($this));
+							break;
+						case 2:
+							$r = 3;
+							break;
+						}
+						return $r;
+					}($this));
+					return $r;
+				}(this)));
+				b1.writeByte(0);
+				b1.writeByte(0);
+				b1.writeByte(h.interlaced?1:0);
+				this.writeChunk("IHDR",b1.getBytes());
+				break;
+			case 0:
+				this.writeChunk("IEND",haxe_io_Bytes.alloc(0));
+				break;
+			case 2:
+				var d = c[2];
+				this.writeChunk("IDAT",d);
+				break;
+			case 3:
+				var b2 = c[2];
+				this.writeChunk("PLTE",b2);
+				break;
+			case 4:
+				var data = c[3];
+				var id = c[2];
+				this.writeChunk(id,data);
+				break;
+			}
+		}
+	}
+	,writeChunk: function(id,data) {
+		this.o.writeInt32(data.length);
+		this.o.writeString(id);
+		this.o.write(data);
+		var crc = new haxe_crypto_Crc32();
+		var _g = 0;
+		while(_g < 4) {
+			var i = _g++;
+			crc["byte"](HxOverrides.cca(id,i));
+		}
+		crc.update(data,0,data.length);
+		this.o.writeInt32(crc.get());
+	}
+	,__class__: format_png_Writer
+};
+var format_tools_Adler32 = function() {
+	this.a1 = 1;
+	this.a2 = 0;
+};
+$hxClasses["format.tools.Adler32"] = format_tools_Adler32;
+format_tools_Adler32.__name__ = ["format","tools","Adler32"];
+format_tools_Adler32.read = function(i) {
+	var a = new format_tools_Adler32();
+	var a2a = i.readByte();
+	var a2b = i.readByte();
+	var a1a = i.readByte();
+	var a1b = i.readByte();
+	a.a1 = a1a << 8 | a1b;
+	a.a2 = a2a << 8 | a2b;
+	return a;
+};
+format_tools_Adler32.prototype = {
+	a1: null
+	,a2: null
+	,update: function(b,pos,len) {
+		var a1 = this.a1;
+		var a2 = this.a2;
+		var _g1 = pos;
+		var _g = pos + len;
+		while(_g1 < _g) {
+			var p = _g1++;
+			var c = b.b[p];
+			a1 = (a1 + c) % 65521;
+			a2 = (a2 + a1) % 65521;
+		}
+		this.a1 = a1;
+		this.a2 = a2;
+	}
+	,equals: function(a) {
+		return a.a1 == this.a1 && a.a2 == this.a2;
+	}
+	,__class__: format_tools_Adler32
+};
+var format_tools_Deflate = function() { };
+$hxClasses["format.tools.Deflate"] = format_tools_Deflate;
+format_tools_Deflate.__name__ = ["format","tools","Deflate"];
+format_tools_Deflate.run = function(b) {
+	throw new js__$Boot_HaxeError("Deflate is not supported on this platform");
+	return null;
+};
+var format_tools_Huffman = $hxClasses["format.tools.Huffman"] = { __ename__ : ["format","tools","Huffman"], __constructs__ : ["Found","NeedBit","NeedBits"] };
+format_tools_Huffman.Found = function(i) { var $x = ["Found",0,i]; $x.__enum__ = format_tools_Huffman; $x.toString = $estr; return $x; };
+format_tools_Huffman.NeedBit = function(left,right) { var $x = ["NeedBit",1,left,right]; $x.__enum__ = format_tools_Huffman; $x.toString = $estr; return $x; };
+format_tools_Huffman.NeedBits = function(n,table) { var $x = ["NeedBits",2,n,table]; $x.__enum__ = format_tools_Huffman; $x.toString = $estr; return $x; };
+var format_tools_HuffTools = function() {
+};
+$hxClasses["format.tools.HuffTools"] = format_tools_HuffTools;
+format_tools_HuffTools.__name__ = ["format","tools","HuffTools"];
+format_tools_HuffTools.prototype = {
+	treeDepth: function(t) {
+		switch(t[1]) {
+		case 0:
+			return 0;
+		case 2:
+			throw new js__$Boot_HaxeError("assert");
+			break;
+		case 1:
+			var b = t[3];
+			var a = t[2];
+			var da = this.treeDepth(a);
+			var db = this.treeDepth(b);
+			return 1 + (da < db?da:db);
+		}
+	}
+	,treeCompress: function(t) {
+		var d = this.treeDepth(t);
+		if(d == 0) return t;
+		if(d == 1) switch(t[1]) {
+		case 1:
+			var b = t[3];
+			var a = t[2];
+			return format_tools_Huffman.NeedBit(this.treeCompress(a),this.treeCompress(b));
+		default:
+			throw new js__$Boot_HaxeError("assert");
+		}
+		var size = 1 << d;
+		var table = [];
+		var _g = 0;
+		while(_g < size) {
+			var i = _g++;
+			table.push(format_tools_Huffman.Found(-1));
+		}
+		this.treeWalk(table,0,0,d,t);
+		return format_tools_Huffman.NeedBits(d,table);
+	}
+	,treeWalk: function(table,p,cd,d,t) {
+		switch(t[1]) {
+		case 1:
+			var b = t[3];
+			var a = t[2];
+			if(d > 0) {
+				this.treeWalk(table,p,cd + 1,d - 1,a);
+				this.treeWalk(table,p | 1 << cd,cd + 1,d - 1,b);
+			} else table[p] = this.treeCompress(t);
+			break;
+		default:
+			table[p] = this.treeCompress(t);
+		}
+	}
+	,treeMake: function(bits,maxbits,v,len) {
+		if(len > maxbits) throw new js__$Boot_HaxeError("Invalid huffman");
+		var idx = v << 5 | len;
+		if(bits.h.hasOwnProperty(idx)) return format_tools_Huffman.Found(bits.h[idx]);
+		v <<= 1;
+		len += 1;
+		return format_tools_Huffman.NeedBit(this.treeMake(bits,maxbits,v,len),this.treeMake(bits,maxbits,v | 1,len));
+	}
+	,make: function(lengths,pos,nlengths,maxbits) {
+		var counts = [];
+		var tmp = [];
+		if(maxbits > 32) throw new js__$Boot_HaxeError("Invalid huffman");
+		var _g = 0;
+		while(_g < maxbits) {
+			var i = _g++;
+			counts.push(0);
+			tmp.push(0);
+		}
+		var _g1 = 0;
+		while(_g1 < nlengths) {
+			var i1 = _g1++;
+			var p = lengths[i1 + pos];
+			if(p >= maxbits) throw new js__$Boot_HaxeError("Invalid huffman");
+			counts[p]++;
+		}
+		var code = 0;
+		var _g11 = 1;
+		var _g2 = maxbits - 1;
+		while(_g11 < _g2) {
+			var i2 = _g11++;
+			code = code + counts[i2] << 1;
+			tmp[i2] = code;
+		}
+		var bits = new haxe_ds_IntMap();
+		var _g3 = 0;
+		while(_g3 < nlengths) {
+			var i3 = _g3++;
+			var l = lengths[i3 + pos];
+			if(l != 0) {
+				var n = tmp[l - 1];
+				tmp[l - 1] = n + 1;
+				bits.h[n << 5 | l] = i3;
+			}
+		}
+		return this.treeCompress(format_tools_Huffman.NeedBit(this.treeMake(bits,maxbits,0,1),this.treeMake(bits,maxbits,1,1)));
+	}
+	,__class__: format_tools_HuffTools
+};
+var format_tools_Inflate = function() { };
+$hxClasses["format.tools.Inflate"] = format_tools_Inflate;
+format_tools_Inflate.__name__ = ["format","tools","Inflate"];
+format_tools_Inflate.run = function(bytes) {
+	return format_tools_InflateImpl.run(new haxe_io_BytesInput(bytes));
+};
+var format_tools__$InflateImpl_Window = function(hasCrc) {
+	this.buffer = haxe_io_Bytes.alloc(65536);
+	this.pos = 0;
+	if(hasCrc) this.crc = new format_tools_Adler32();
+};
+$hxClasses["format.tools._InflateImpl.Window"] = format_tools__$InflateImpl_Window;
+format_tools__$InflateImpl_Window.__name__ = ["format","tools","_InflateImpl","Window"];
+format_tools__$InflateImpl_Window.prototype = {
+	buffer: null
+	,pos: null
+	,crc: null
+	,slide: function() {
+		if(this.crc != null) this.crc.update(this.buffer,0,32768);
+		var b = haxe_io_Bytes.alloc(65536);
+		this.pos -= 32768;
+		b.blit(0,this.buffer,32768,this.pos);
+		this.buffer = b;
+	}
+	,addBytes: function(b,p,len) {
+		if(this.pos + len > 65536) this.slide();
+		this.buffer.blit(this.pos,b,p,len);
+		this.pos += len;
+	}
+	,addByte: function(c) {
+		if(this.pos == 65536) this.slide();
+		this.buffer.b[this.pos] = c & 255;
+		this.pos++;
+	}
+	,getLastChar: function() {
+		return this.buffer.b[this.pos - 1];
+	}
+	,available: function() {
+		return this.pos;
+	}
+	,checksum: function() {
+		if(this.crc != null) this.crc.update(this.buffer,0,this.pos);
+		return this.crc;
+	}
+	,__class__: format_tools__$InflateImpl_Window
+};
+var format_tools__$InflateImpl_State = $hxClasses["format.tools._InflateImpl.State"] = { __ename__ : ["format","tools","_InflateImpl","State"], __constructs__ : ["Head","Block","CData","Flat","Crc","Dist","DistOne","Done"] };
+format_tools__$InflateImpl_State.Head = ["Head",0];
+format_tools__$InflateImpl_State.Head.toString = $estr;
+format_tools__$InflateImpl_State.Head.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.Block = ["Block",1];
+format_tools__$InflateImpl_State.Block.toString = $estr;
+format_tools__$InflateImpl_State.Block.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.CData = ["CData",2];
+format_tools__$InflateImpl_State.CData.toString = $estr;
+format_tools__$InflateImpl_State.CData.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.Flat = ["Flat",3];
+format_tools__$InflateImpl_State.Flat.toString = $estr;
+format_tools__$InflateImpl_State.Flat.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.Crc = ["Crc",4];
+format_tools__$InflateImpl_State.Crc.toString = $estr;
+format_tools__$InflateImpl_State.Crc.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.Dist = ["Dist",5];
+format_tools__$InflateImpl_State.Dist.toString = $estr;
+format_tools__$InflateImpl_State.Dist.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.DistOne = ["DistOne",6];
+format_tools__$InflateImpl_State.DistOne.toString = $estr;
+format_tools__$InflateImpl_State.DistOne.__enum__ = format_tools__$InflateImpl_State;
+format_tools__$InflateImpl_State.Done = ["Done",7];
+format_tools__$InflateImpl_State.Done.toString = $estr;
+format_tools__$InflateImpl_State.Done.__enum__ = format_tools__$InflateImpl_State;
+var format_tools_InflateImpl = function(i,header,crc) {
+	if(crc == null) crc = true;
+	if(header == null) header = true;
+	this["final"] = false;
+	this.htools = new format_tools_HuffTools();
+	this.huffman = this.buildFixedHuffman();
+	this.huffdist = null;
+	this.len = 0;
+	this.dist = 0;
+	if(header) this.state = format_tools__$InflateImpl_State.Head; else this.state = format_tools__$InflateImpl_State.Block;
+	this.input = i;
+	this.bits = 0;
+	this.nbits = 0;
+	this.needed = 0;
+	this.output = null;
+	this.outpos = 0;
+	this.lengths = [];
+	var _g = 0;
+	while(_g < 19) {
+		var i1 = _g++;
+		this.lengths.push(-1);
+	}
+	this.window = new format_tools__$InflateImpl_Window(crc);
+};
+$hxClasses["format.tools.InflateImpl"] = format_tools_InflateImpl;
+format_tools_InflateImpl.__name__ = ["format","tools","InflateImpl"];
+format_tools_InflateImpl.run = function(i,bufsize) {
+	if(bufsize == null) bufsize = 65536;
+	var buf = haxe_io_Bytes.alloc(bufsize);
+	var output = new haxe_io_BytesBuffer();
+	var inflate = new format_tools_InflateImpl(i);
+	while(true) {
+		var len = inflate.readBytes(buf,0,bufsize);
+		output.addBytes(buf,0,len);
+		if(len < bufsize) break;
+	}
+	return output.getBytes();
+};
+format_tools_InflateImpl.prototype = {
+	nbits: null
+	,bits: null
+	,state: null
+	,'final': null
+	,huffman: null
+	,huffdist: null
+	,htools: null
+	,len: null
+	,dist: null
+	,needed: null
+	,output: null
+	,outpos: null
+	,input: null
+	,lengths: null
+	,window: null
+	,buildFixedHuffman: function() {
+		if(format_tools_InflateImpl.FIXED_HUFFMAN != null) return format_tools_InflateImpl.FIXED_HUFFMAN;
+		var a = [];
+		var _g = 0;
+		while(_g < 288) {
+			var n = _g++;
+			a.push(n <= 143?8:n <= 255?9:n <= 279?7:8);
+		}
+		format_tools_InflateImpl.FIXED_HUFFMAN = this.htools.make(a,0,288,10);
+		return format_tools_InflateImpl.FIXED_HUFFMAN;
+	}
+	,readBytes: function(b,pos,len) {
+		this.needed = len;
+		this.outpos = pos;
+		this.output = b;
+		if(len > 0) while(this.inflateLoop()) {
+		}
+		return len - this.needed;
+	}
+	,getBits: function(n) {
+		while(this.nbits < n) {
+			this.bits |= this.input.readByte() << this.nbits;
+			this.nbits += 8;
+		}
+		var b = this.bits & (1 << n) - 1;
+		this.nbits -= n;
+		this.bits >>= n;
+		return b;
+	}
+	,getBit: function() {
+		if(this.nbits == 0) {
+			this.nbits = 8;
+			this.bits = this.input.readByte();
+		}
+		var b = (this.bits & 1) == 1;
+		this.nbits--;
+		this.bits >>= 1;
+		return b;
+	}
+	,getRevBits: function(n) {
+		if(n == 0) return 0; else if(this.getBit()) return 1 << n - 1 | this.getRevBits(n - 1); else return this.getRevBits(n - 1);
+	}
+	,resetBits: function() {
+		this.bits = 0;
+		this.nbits = 0;
+	}
+	,addBytes: function(b,p,len) {
+		this.window.addBytes(b,p,len);
+		this.output.blit(this.outpos,b,p,len);
+		this.needed -= len;
+		this.outpos += len;
+	}
+	,addByte: function(b) {
+		this.window.addByte(b);
+		this.output.b[this.outpos] = b & 255;
+		this.needed--;
+		this.outpos++;
+	}
+	,addDistOne: function(n) {
+		var c = this.window.getLastChar();
+		var _g = 0;
+		while(_g < n) {
+			var i = _g++;
+			this.addByte(c);
+		}
+	}
+	,addDist: function(d,len) {
+		this.addBytes(this.window.buffer,this.window.pos - d,len);
+	}
+	,applyHuffman: function(h) {
+		switch(h[1]) {
+		case 0:
+			var n = h[2];
+			return n;
+		case 1:
+			var b = h[3];
+			var a = h[2];
+			return this.applyHuffman(this.getBit()?b:a);
+		case 2:
+			var tbl = h[3];
+			var n1 = h[2];
+			return this.applyHuffman(tbl[this.getBits(n1)]);
+		}
+	}
+	,inflateLengths: function(a,max) {
+		var i = 0;
+		var prev = 0;
+		while(i < max) {
+			var n = this.applyHuffman(this.huffman);
+			switch(n) {
+			case 0:case 1:case 2:case 3:case 4:case 5:case 6:case 7:case 8:case 9:case 10:case 11:case 12:case 13:case 14:case 15:
+				prev = n;
+				a[i] = n;
+				i++;
+				break;
+			case 16:
+				var end = i + 3 + this.getBits(2);
+				if(end > max) throw new js__$Boot_HaxeError("Invalid data");
+				while(i < end) {
+					a[i] = prev;
+					i++;
+				}
+				break;
+			case 17:
+				i += 3 + this.getBits(3);
+				if(i > max) throw new js__$Boot_HaxeError("Invalid data");
+				break;
+			case 18:
+				i += 11 + this.getBits(7);
+				if(i > max) throw new js__$Boot_HaxeError("Invalid data");
+				break;
+			default:
+				throw new js__$Boot_HaxeError("Invalid data");
+			}
+		}
+	}
+	,inflateLoop: function() {
+		var _g = this.state;
+		switch(_g[1]) {
+		case 0:
+			var cmf = this.input.readByte();
+			var cm = cmf & 15;
+			var cinfo = cmf >> 4;
+			if(cm != 8) throw new js__$Boot_HaxeError("Invalid data");
+			var flg = this.input.readByte();
+			var fdict = (flg & 32) != 0;
+			if(((cmf << 8) + flg) % 31 != 0) throw new js__$Boot_HaxeError("Invalid data");
+			if(fdict) throw new js__$Boot_HaxeError("Unsupported dictionary");
+			this.state = format_tools__$InflateImpl_State.Block;
+			return true;
+		case 4:
+			var calc = this.window.checksum();
+			if(calc == null) {
+				this.state = format_tools__$InflateImpl_State.Done;
+				return true;
+			}
+			var crc = format_tools_Adler32.read(this.input);
+			if(!calc.equals(crc)) throw new js__$Boot_HaxeError("Invalid CRC");
+			this.state = format_tools__$InflateImpl_State.Done;
+			return true;
+		case 7:
+			return false;
+		case 1:
+			this["final"] = this.getBit();
+			var _g1 = this.getBits(2);
+			switch(_g1) {
+			case 0:
+				this.len = this.input.readUInt16();
+				var nlen = this.input.readUInt16();
+				if(nlen != 65535 - this.len) throw new js__$Boot_HaxeError("Invalid data");
+				this.state = format_tools__$InflateImpl_State.Flat;
+				var r = this.inflateLoop();
+				this.resetBits();
+				return r;
+			case 1:
+				this.huffman = this.buildFixedHuffman();
+				this.huffdist = null;
+				this.state = format_tools__$InflateImpl_State.CData;
+				return true;
+			case 2:
+				var hlit = this.getBits(5) + 257;
+				var hdist = this.getBits(5) + 1;
+				var hclen = this.getBits(4) + 4;
+				var _g2 = 0;
+				while(_g2 < hclen) {
+					var i = _g2++;
+					this.lengths[format_tools_InflateImpl.CODE_LENGTHS_POS[i]] = this.getBits(3);
+				}
+				var _g21 = hclen;
+				while(_g21 < 19) {
+					var i1 = _g21++;
+					this.lengths[format_tools_InflateImpl.CODE_LENGTHS_POS[i1]] = 0;
+				}
+				this.huffman = this.htools.make(this.lengths,0,19,8);
+				var lengths = [];
+				var _g3 = 0;
+				var _g22 = hlit + hdist;
+				while(_g3 < _g22) {
+					var i2 = _g3++;
+					lengths.push(0);
+				}
+				this.inflateLengths(lengths,hlit + hdist);
+				this.huffdist = this.htools.make(lengths,hlit,hdist,16);
+				this.huffman = this.htools.make(lengths,0,hlit,16);
+				this.state = format_tools__$InflateImpl_State.CData;
+				return true;
+			default:
+				throw new js__$Boot_HaxeError("Invalid data");
+			}
+			break;
+		case 3:
+			var rlen;
+			if(this.len < this.needed) rlen = this.len; else rlen = this.needed;
+			var bytes = this.input.read(rlen);
+			this.len -= rlen;
+			this.addBytes(bytes,0,rlen);
+			if(this.len == 0) if(this["final"]) this.state = format_tools__$InflateImpl_State.Crc; else this.state = format_tools__$InflateImpl_State.Block;
+			return this.needed > 0;
+		case 6:
+			var rlen1;
+			if(this.len < this.needed) rlen1 = this.len; else rlen1 = this.needed;
+			this.addDistOne(rlen1);
+			this.len -= rlen1;
+			if(this.len == 0) this.state = format_tools__$InflateImpl_State.CData;
+			return this.needed > 0;
+		case 5:
+			while(this.len > 0 && this.needed > 0) {
+				var rdist;
+				if(this.len < this.dist) rdist = this.len; else rdist = this.dist;
+				var rlen2;
+				if(this.needed < rdist) rlen2 = this.needed; else rlen2 = rdist;
+				this.addDist(this.dist,rlen2);
+				this.len -= rlen2;
+			}
+			if(this.len == 0) this.state = format_tools__$InflateImpl_State.CData;
+			return this.needed > 0;
+		case 2:
+			var n = this.applyHuffman(this.huffman);
+			if(n < 256) {
+				this.addByte(n);
+				return this.needed > 0;
+			} else if(n == 256) {
+				if(this["final"]) this.state = format_tools__$InflateImpl_State.Crc; else this.state = format_tools__$InflateImpl_State.Block;
+				return true;
+			} else {
+				n -= 257;
+				var extra_bits = format_tools_InflateImpl.LEN_EXTRA_BITS_TBL[n];
+				if(extra_bits == -1) throw new js__$Boot_HaxeError("Invalid data");
+				this.len = format_tools_InflateImpl.LEN_BASE_VAL_TBL[n] + this.getBits(extra_bits);
+				var dist_code;
+				if(this.huffdist == null) dist_code = this.getRevBits(5); else dist_code = this.applyHuffman(this.huffdist);
+				extra_bits = format_tools_InflateImpl.DIST_EXTRA_BITS_TBL[dist_code];
+				if(extra_bits == -1) throw new js__$Boot_HaxeError("Invalid data");
+				this.dist = format_tools_InflateImpl.DIST_BASE_VAL_TBL[dist_code] + this.getBits(extra_bits);
+				if(this.dist > this.window.available()) throw new js__$Boot_HaxeError("Invalid data");
+				if(this.dist == 1) this.state = format_tools__$InflateImpl_State.DistOne; else this.state = format_tools__$InflateImpl_State.Dist;
+				return true;
+			}
+			break;
+		}
+	}
+	,__class__: format_tools_InflateImpl
+};
 var haxe_StackItem = $hxClasses["haxe.StackItem"] = { __ename__ : ["haxe","StackItem"], __constructs__ : ["CFunction","Module","FilePos","Method","LocalFunction"] };
 haxe_StackItem.CFunction = ["CFunction",0];
 haxe_StackItem.CFunction.toString = $estr;
@@ -47796,6 +49533,13 @@ haxe_io_Bytes.prototype = {
 		if(pos < 0 || srcpos < 0 || len < 0 || pos + len > this.length || srcpos + len > src.length) throw new js__$Boot_HaxeError(haxe_io_Error.OutsideBounds);
 		if(srcpos == 0 && len == src.length) this.b.set(src.b,pos); else this.b.set(src.b.subarray(srcpos,srcpos + len),pos);
 	}
+	,fill: function(pos,len,value) {
+		var _g = 0;
+		while(_g < len) {
+			var i = _g++;
+			this.set(pos++,value);
+		}
+	}
 	,getDouble: function(pos) {
 		if(this.data == null) this.data = new DataView(this.b.buffer,this.b.byteOffset,this.b.byteLength);
 		return this.data.getFloat64(pos,true);
@@ -47934,6 +49678,42 @@ haxe_crypto_BaseCode.prototype = {
 		return out;
 	}
 	,__class__: haxe_crypto_BaseCode
+};
+var haxe_crypto_Crc32 = function() {
+	this.crc = -1;
+};
+$hxClasses["haxe.crypto.Crc32"] = haxe_crypto_Crc32;
+haxe_crypto_Crc32.__name__ = ["haxe","crypto","Crc32"];
+haxe_crypto_Crc32.prototype = {
+	crc: null
+	,'byte': function(b) {
+		var tmp = (this.crc ^ b) & 255;
+		var _g = 0;
+		while(_g < 8) {
+			var j = _g++;
+			if((tmp & 1) == 1) tmp = tmp >>> 1 ^ -306674912; else tmp >>>= 1;
+		}
+		this.crc = this.crc >>> 8 ^ tmp;
+	}
+	,update: function(b,pos,len) {
+		var b1 = b.b.bufferValue;
+		var _g1 = pos;
+		var _g = pos + len;
+		while(_g1 < _g) {
+			var i = _g1++;
+			var tmp = (this.crc ^ b1.bytes[i]) & 255;
+			var _g2 = 0;
+			while(_g2 < 8) {
+				var j = _g2++;
+				if((tmp & 1) == 1) tmp = tmp >>> 1 ^ -306674912; else tmp >>>= 1;
+			}
+			this.crc = this.crc >>> 8 ^ tmp;
+		}
+	}
+	,get: function() {
+		return this.crc ^ -1;
+	}
+	,__class__: haxe_crypto_Crc32
 };
 var haxe_crypto_Md5 = function() {
 };
@@ -48162,7 +49942,223 @@ haxe_ds__$StringMap_StringMapIterator.prototype = {
 	}
 	,__class__: haxe_ds__$StringMap_StringMapIterator
 };
-var haxe_io_Eof = function() { };
+var haxe_io_BytesBuffer = function() {
+	this.b = [];
+};
+$hxClasses["haxe.io.BytesBuffer"] = haxe_io_BytesBuffer;
+haxe_io_BytesBuffer.__name__ = ["haxe","io","BytesBuffer"];
+haxe_io_BytesBuffer.prototype = {
+	b: null
+	,add: function(src) {
+		var b1 = this.b;
+		var b2 = src.b;
+		var _g1 = 0;
+		var _g = src.length;
+		while(_g1 < _g) {
+			var i = _g1++;
+			this.b.push(b2[i]);
+		}
+	}
+	,addBytes: function(src,pos,len) {
+		if(pos < 0 || len < 0 || pos + len > src.length) throw new js__$Boot_HaxeError(haxe_io_Error.OutsideBounds);
+		var b1 = this.b;
+		var b2 = src.b;
+		var _g1 = pos;
+		var _g = pos + len;
+		while(_g1 < _g) {
+			var i = _g1++;
+			this.b.push(b2[i]);
+		}
+	}
+	,getBytes: function() {
+		var bytes = new haxe_io_Bytes(new Uint8Array(this.b).buffer);
+		this.b = null;
+		return bytes;
+	}
+	,__class__: haxe_io_BytesBuffer
+};
+var haxe_io_Input = function() { };
+$hxClasses["haxe.io.Input"] = haxe_io_Input;
+haxe_io_Input.__name__ = ["haxe","io","Input"];
+haxe_io_Input.prototype = {
+	bigEndian: null
+	,readByte: function() {
+		throw new js__$Boot_HaxeError("Not implemented");
+	}
+	,readBytes: function(s,pos,len) {
+		var k = len;
+		var b = s.b;
+		if(pos < 0 || len < 0 || pos + len > s.length) throw new js__$Boot_HaxeError(haxe_io_Error.OutsideBounds);
+		while(k > 0) {
+			b[pos] = this.readByte();
+			pos++;
+			k--;
+		}
+		return len;
+	}
+	,set_bigEndian: function(b) {
+		this.bigEndian = b;
+		return b;
+	}
+	,readFullBytes: function(s,pos,len) {
+		while(len > 0) {
+			var k = this.readBytes(s,pos,len);
+			pos += k;
+			len -= k;
+		}
+	}
+	,read: function(nbytes) {
+		var s = haxe_io_Bytes.alloc(nbytes);
+		var p = 0;
+		while(nbytes > 0) {
+			var k = this.readBytes(s,p,nbytes);
+			if(k == 0) throw new js__$Boot_HaxeError(haxe_io_Error.Blocked);
+			p += k;
+			nbytes -= k;
+		}
+		return s;
+	}
+	,readUInt16: function() {
+		var ch1 = this.readByte();
+		var ch2 = this.readByte();
+		if(this.bigEndian) return ch2 | ch1 << 8; else return ch1 | ch2 << 8;
+	}
+	,readInt32: function() {
+		var ch1 = this.readByte();
+		var ch2 = this.readByte();
+		var ch3 = this.readByte();
+		var ch4 = this.readByte();
+		if(this.bigEndian) return ch4 | ch3 << 8 | ch2 << 16 | ch1 << 24; else return ch1 | ch2 << 8 | ch3 << 16 | ch4 << 24;
+	}
+	,readString: function(len) {
+		var b = haxe_io_Bytes.alloc(len);
+		this.readFullBytes(b,0,len);
+		return b.toString();
+	}
+	,__class__: haxe_io_Input
+	,__properties__: {set_bigEndian:"set_bigEndian"}
+};
+var haxe_io_BytesInput = function(b,pos,len) {
+	if(pos == null) pos = 0;
+	if(len == null) len = b.length - pos;
+	if(pos < 0 || len < 0 || pos + len > b.length) throw new js__$Boot_HaxeError(haxe_io_Error.OutsideBounds);
+	this.b = b.b;
+	this.pos = pos;
+	this.len = len;
+	this.totlen = len;
+};
+$hxClasses["haxe.io.BytesInput"] = haxe_io_BytesInput;
+haxe_io_BytesInput.__name__ = ["haxe","io","BytesInput"];
+haxe_io_BytesInput.__super__ = haxe_io_Input;
+haxe_io_BytesInput.prototype = $extend(haxe_io_Input.prototype,{
+	b: null
+	,pos: null
+	,len: null
+	,totlen: null
+	,readByte: function() {
+		if(this.len == 0) throw new js__$Boot_HaxeError(new haxe_io_Eof());
+		this.len--;
+		return this.b[this.pos++];
+	}
+	,readBytes: function(buf,pos,len) {
+		if(pos < 0 || len < 0 || pos + len > buf.length) throw new js__$Boot_HaxeError(haxe_io_Error.OutsideBounds);
+		if(this.len == 0 && len > 0) throw new js__$Boot_HaxeError(new haxe_io_Eof());
+		if(this.len < len) len = this.len;
+		var b1 = this.b;
+		var b2 = buf.b;
+		var _g = 0;
+		while(_g < len) {
+			var i = _g++;
+			b2[pos + i] = b1[this.pos + i];
+		}
+		this.pos += len;
+		this.len -= len;
+		return len;
+	}
+	,__class__: haxe_io_BytesInput
+});
+var haxe_io_Output = function() { };
+$hxClasses["haxe.io.Output"] = haxe_io_Output;
+haxe_io_Output.__name__ = ["haxe","io","Output"];
+haxe_io_Output.prototype = {
+	bigEndian: null
+	,writeByte: function(c) {
+		throw new js__$Boot_HaxeError("Not implemented");
+	}
+	,writeBytes: function(s,pos,len) {
+		var k = len;
+		var b = s.b.bufferValue;
+		if(pos < 0 || len < 0 || pos + len > s.length) throw new js__$Boot_HaxeError(haxe_io_Error.OutsideBounds);
+		while(k > 0) {
+			this.writeByte(b[pos]);
+			pos++;
+			k--;
+		}
+		return len;
+	}
+	,set_bigEndian: function(b) {
+		this.bigEndian = b;
+		return b;
+	}
+	,write: function(s) {
+		var l = s.length;
+		var p = 0;
+		while(l > 0) {
+			var k = this.writeBytes(s,p,l);
+			if(k == 0) throw new js__$Boot_HaxeError(haxe_io_Error.Blocked);
+			p += k;
+			l -= k;
+		}
+	}
+	,writeFullBytes: function(s,pos,len) {
+		while(len > 0) {
+			var k = this.writeBytes(s,pos,len);
+			pos += k;
+			len -= k;
+		}
+	}
+	,writeInt32: function(x) {
+		if(this.bigEndian) {
+			this.writeByte(x >>> 24);
+			this.writeByte(x >> 16 & 255);
+			this.writeByte(x >> 8 & 255);
+			this.writeByte(x & 255);
+		} else {
+			this.writeByte(x & 255);
+			this.writeByte(x >> 8 & 255);
+			this.writeByte(x >> 16 & 255);
+			this.writeByte(x >>> 24);
+		}
+	}
+	,writeString: function(s) {
+		var b = haxe_io_Bytes.ofString(s);
+		this.writeFullBytes(b,0,b.length);
+	}
+	,__class__: haxe_io_Output
+	,__properties__: {set_bigEndian:"set_bigEndian"}
+};
+var haxe_io_BytesOutput = function() {
+	this.b = new haxe_io_BytesBuffer();
+};
+$hxClasses["haxe.io.BytesOutput"] = haxe_io_BytesOutput;
+haxe_io_BytesOutput.__name__ = ["haxe","io","BytesOutput"];
+haxe_io_BytesOutput.__super__ = haxe_io_Output;
+haxe_io_BytesOutput.prototype = $extend(haxe_io_Output.prototype,{
+	b: null
+	,writeByte: function(c) {
+		this.b.b.push(c);
+	}
+	,writeBytes: function(buf,pos,len) {
+		this.b.addBytes(buf,pos,len);
+		return len;
+	}
+	,getBytes: function() {
+		return this.b.getBytes();
+	}
+	,__class__: haxe_io_BytesOutput
+});
+var haxe_io_Eof = function() {
+};
 $hxClasses["haxe.io.Eof"] = haxe_io_Eof;
 haxe_io_Eof.__name__ = ["haxe","io","Eof"];
 haxe_io_Eof.prototype = {
@@ -49895,7 +51891,7 @@ lime__$backend_html5_HTML5Window.prototype = {
 		this.setWidth = this.parent.__width;
 		this.setHeight = this.parent.__height;
 		this.parent.id = lime__$backend_html5_HTML5Window.windowID++;
-		if(js_Boot.__instanceof(this.element,HTMLCanvasElement)) this.canvas = this.element; else this.canvas = window.document.createElement("canvas");
+		if(js_Boot.__instanceof(this.element,HTMLCanvasElement)) this.canvas = this.element; else this.div = window.document.createElement("div");
 		if(this.canvas != null) {
 			var style = this.canvas.style;
 			style.setProperty("-webkit-transform","translateZ(0)",null);
@@ -71162,16 +73158,6 @@ openfl_text_TextField.prototype = $extend(openfl_display_InteractiveObject.proto
 			this.__selectionIndex = this.__caretIndex;
 		}
 		if(this.stage != null) {
-			this.stage.window.backend.setEnableTextEvents(true);
-			if(!this.__inputEnabled) {
-				this.stage.window.backend.setEnableTextEvents(true);
-				if(!this.stage.window.onTextInput.has($bind(this,this.window_onTextInput))) {
-					this.stage.window.onTextInput.add($bind(this,this.window_onTextInput));
-					this.stage.window.onKeyDown.add($bind(this,this.window_onKeyDown));
-				}
-				this.__inputEnabled = true;
-				this.__startCursorTimer();
-			}
 		}
 	}
 	,__stopCursorTimer: function() {
@@ -71185,13 +73171,6 @@ openfl_text_TextField.prototype = $extend(openfl_display_InteractiveObject.proto
 		}
 	}
 	,__stopTextInput: function() {
-		if(this.__inputEnabled && this.stage != null) {
-			this.stage.window.backend.setEnableTextEvents(false);
-			this.stage.window.onTextInput.remove($bind(this,this.window_onTextInput));
-			this.stage.window.onKeyDown.remove($bind(this,this.window_onKeyDown));
-			this.__inputEnabled = false;
-			this.__stopCursorTimer();
-		}
 	}
 	,__updateLayout: function() {
 		if(this.__layoutDirty) {
@@ -71335,61 +73314,6 @@ openfl_text_TextField.prototype = $extend(openfl_display_InteractiveObject.proto
 			this.__layoutDirty = true;
 		}
 		this.__isHTML = true;
-		if(this.__div == null) {
-			value = new EReg("<br>","g").replace(value,"\n");
-			value = new EReg("<br/>","g").replace(value,"\n");
-			var segments = value.split("<font");
-			if(segments.length == 1) {
-				value = new EReg("<.*?>","g").replace(value,"");
-				if(this.__textEngine.textFormatRanges.length > 1) this.__textEngine.textFormatRanges.splice(1,this.__textEngine.textFormatRanges.length - 1);
-				var range = this.__textEngine.textFormatRanges[0];
-				range.format = this.__textFormat;
-				range.start = 0;
-				range.end = value.length;
-				return this.__textEngine.text = value;
-			} else {
-				this.__textEngine.textFormatRanges.splice(0,this.__textEngine.textFormatRanges.length);
-				value = "";
-				var _g = 0;
-				while(_g < segments.length) {
-					var segment = segments[_g];
-					++_g;
-					if(segment == "") continue;
-					var closeFontIndex = segment.indexOf("</font>");
-					if(closeFontIndex > -1) {
-						var start = segment.indexOf(">") + 1;
-						var end = closeFontIndex;
-						var format = this.__textFormat.clone();
-						var faceIndex = segment.indexOf("face=");
-						var colorIndex = segment.indexOf("color=");
-						var sizeIndex = segment.indexOf("size=");
-						if(faceIndex > -1 && faceIndex < start) {
-							var len = segment.indexOf("\"",faceIndex);
-							format.font = HxOverrides.substr(segment,faceIndex + 6,len);
-						}
-						if(colorIndex > -1 && colorIndex < start) format.color = Std.parseInt("0x" + HxOverrides.substr(segment,colorIndex + 8,6));
-						if(sizeIndex > -1 && sizeIndex < start) format.size = Std.parseInt((function($this) {
-							var $r;
-							var len1 = segment.indexOf("\"",sizeIndex);
-							$r = HxOverrides.substr(segment,sizeIndex + 6,len1);
-							return $r;
-						}(this)));
-						var sub = segment.substring(start,end);
-						sub = new EReg("<.*?>","g").replace(sub,"");
-						this.__textEngine.textFormatRanges.push(new openfl__$internal_text_TextFormatRange(format,value.length,value.length + sub.length));
-						value += sub;
-						if(closeFontIndex + 7 < segment.length) {
-							sub = HxOverrides.substr(segment,closeFontIndex + 7,null);
-							this.__textEngine.textFormatRanges.push(new openfl__$internal_text_TextFormatRange(this.__textFormat,value.length,value.length + sub.length));
-							value += sub;
-						}
-					} else {
-						this.__textEngine.textFormatRanges.push(new openfl__$internal_text_TextFormatRange(this.__textFormat,value.length,value.length + segment.length));
-						value += segment;
-					}
-				}
-			}
-		}
 		return this.__textEngine.text = value;
 	}
 	,get_length: function() {
@@ -72929,10 +74853,15 @@ openfl_display_Loader.prototype = $extend(openfl_display_DisplayObjectContainer.
 });
 var openfl_display_OpenGLView = function() {
 	openfl_display_DirectRenderer.call(this,"OpenGLView");
-	if(!this.__added) {
-		this.__added = true;
-		haxe_Log.trace("Warning: OpenGLView is not available in HTML5 canvas rendering mode",{ fileName : "OpenGLView.hx", lineNumber : 76, className : "openfl.display.OpenGLView", methodName : "new"});
-		haxe_Log.trace("Please compile your project using -Ddom or -Dwebgl (beta) to enable",{ fileName : "OpenGLView.hx", lineNumber : 77, className : "openfl.display.OpenGLView", methodName : "new"});
+	if(!this.__initialized) {
+		this.__canvas = window.document.createElement("canvas");
+		this.__canvas.width = openfl_Lib.current.stage.stageWidth;
+		this.__canvas.height = openfl_Lib.current.stage.stageHeight;
+		var $window = openfl_Lib.current.stage.window;
+		this.__context = this.__canvas.getContext("webgl",{ alpha : false, premultipliedAlpha : false, antialias : false, depth : Object.prototype.hasOwnProperty.call($window.config,"depthBuffer")?$window.config.depthBuffer:true, stencil : Object.prototype.hasOwnProperty.call($window.config,"stencilBuffer")?$window.config.stencilBuffer:false});
+		if(this.__context == null) this.__context = this.__canvas.getContext("experimental-webgl");
+		lime_graphics_opengl_GL.context = this.__context;
+		this.__initialized = true;
 	}
 };
 $hxClasses["openfl.display.OpenGLView"] = openfl_display_OpenGLView;
@@ -72940,7 +74869,13 @@ openfl_display_OpenGLView.__name__ = ["openfl","display","OpenGLView"];
 openfl_display_OpenGLView.__properties__ = {get_isSupported:"get_isSupported"}
 openfl_display_OpenGLView.isSupported = null;
 openfl_display_OpenGLView.get_isSupported = function() {
-	return false;
+	if(!window.WebGLRenderingContext) return false;
+	if(lime_graphics_opengl_GL.context != null) return true; else {
+		var canvas = window.document.createElement("canvas");
+		var context = canvas.getContext("webgl");
+		if(context == null) context = canvas.getContext("experimental-webgl");
+		return context != null;
+	}
 };
 openfl_display_OpenGLView.__super__ = openfl_display_DirectRenderer;
 openfl_display_OpenGLView.prototype = $extend(openfl_display_DirectRenderer.prototype,{
@@ -72973,6 +74908,16 @@ openfl_display_OpenGLView.prototype = $extend(openfl_display_DirectRenderer.prot
 			renderSession.shaderManager.setShader(null);
 			renderSession.blendModeManager.setBlendMode(null);
 		}
+	}
+	,set_width: function(value) {
+		openfl_display_DirectRenderer.prototype.set_width.call(this,value);
+		this.__canvas.width = value | 0;
+		return value;
+	}
+	,set_height: function(value) {
+		openfl_display_DirectRenderer.prototype.set_height.call(this,value);
+		this.__canvas.height = value | 0;
+		return value;
 	}
 	,__class__: openfl_display_OpenGLView
 });
@@ -73633,6 +75578,7 @@ openfl_display_Stage.prototype = $extend(openfl_display_DisplayObjectContainer.p
 				break;
 			case 2:
 				var element = _g[2];
+				this.__renderer = new openfl__$internal_renderer_dom_DOMRenderer(this.stageWidth,this.stageHeight,element);
 				break;
 			case 4:
 				var cairo = _g[2];
@@ -74342,10 +76288,14 @@ openfl_display_Stage.prototype = $extend(openfl_display_DisplayObjectContainer.p
 		} else if(openfl_display_DisplayObject.__worldTransformDirty > 0 || this.__dirty || openfl_display_DisplayObject.__worldRenderDirty > 0) {
 			openfl_display_DisplayObjectContainer.prototype.__update.call(this,false,updateChildren,maskGrahpics);
 			if(updateChildren) {
+				this.__wasDirty = true;
 				openfl_display_DisplayObject.__worldTransformDirty = 0;
 				openfl_display_DisplayObject.__worldRenderDirty = 0;
 				this.__dirty = false;
 			}
+		} else if(this.__wasDirty) {
+			openfl_display_DisplayObjectContainer.prototype.__update.call(this,false,updateChildren,maskGrahpics);
+			if(updateChildren) this.__wasDirty = false;
 		}
 	}
 	,get_mouseX: function() {
@@ -81906,6 +83856,7 @@ openfl_utils_ByteArrayData.prototype = $extend(haxe_io_Bytes.prototype,{
 		return this.getString(this.position - length,length);
 	}
 	,uncompress: function(algorithm) {
+		this.__setData(format_tools_Inflate.run(this));
 		this.__length = this.length;
 		this.position = 0;
 	}
@@ -82950,6 +84901,14 @@ flixel_util_FlxSort.DESCENDING = 1;
 flixel_util_FlxSpriteUtil.flashGfxSprite = new openfl_display_Sprite();
 flixel_util_FlxSpriteUtil.flashGfx = flixel_util_FlxSpriteUtil.flashGfxSprite.get_graphics();
 flixel_util_LabelValuePair._pool = new flixel_util_FlxPool(flixel_util_LabelValuePair);
+format_tools__$InflateImpl_Window.SIZE = 32768;
+format_tools__$InflateImpl_Window.BUFSIZE = 65536;
+format_tools_InflateImpl.LEN_EXTRA_BITS_TBL = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,-1,-1];
+format_tools_InflateImpl.LEN_BASE_VAL_TBL = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+format_tools_InflateImpl.DIST_EXTRA_BITS_TBL = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,-1,-1];
+format_tools_InflateImpl.DIST_BASE_VAL_TBL = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+format_tools_InflateImpl.CODE_LENGTHS_POS = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+format_tools_InflateImpl.FIXED_HUFFMAN = null;
 haxe_Serializer.USE_CACHE = false;
 haxe_Serializer.USE_ENUM_INDEX = false;
 haxe_Serializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";
