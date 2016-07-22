@@ -389,6 +389,7 @@ var Visualization = function() {
 	this.ui = new zui_Zui(kha_Assets.fonts.Inconsolata,64);
 	this.points = { x : 0, y : 0, z : 0};
 	this.constants = { a : 3 * Math.random(), b : 3 * Math.random(), c : 3 * Math.random(), d : 3 * Math.random(), e : 3 * Math.random(), f : 3 * Math.random()};
+	this.size = 5;
 	kha_System.notifyOnRender($bind(this,this.render));
 	kha_Scheduler.addTimeTask($bind(this,this.update),0,0.0166666666666666664);
 };
@@ -396,14 +397,9 @@ $hxClasses["Visualization"] = Visualization;
 Visualization.__name__ = true;
 Visualization.prototype = {
 	ui: null
-	,a: null
-	,b: null
-	,c: null
-	,d: null
-	,e: null
-	,f: null
 	,points: null
 	,constants: null
+	,size: null
 	,height: null
 	,width: null
 	,update: function() {
@@ -416,9 +412,10 @@ Visualization.prototype = {
 		this.gui(graphics);
 	}
 	,draw: function(graphics) {
-		var _g = 0;
-		while(_g < 100000) {
-			++_g;
+		var _g1 = 0;
+		var _g = this.size * 10000;
+		while(_g1 < _g) {
+			++_g1;
 			this.points = this.draw_point(graphics,this.points,this.constants);
 		}
 	}
@@ -429,82 +426,39 @@ Visualization.prototype = {
 		points.x = x1;
 		points.y = y1;
 		points.z = z1;
-		graphics.fillRect(x1 * this.width / 4 + this.width / 2,y1 * this.height / 4 + this.height / 2,1,1);
+		graphics.fillRect(x1 * this.width / 8 + this.width / 2,y1 * this.height / 8 + this.height / 2,1,1);
 		return points;
 	}
 	,gui: function(graphics) {
 		this.ui.begin(graphics);
 		if(this.ui.window("0",0,0,300,300)) {
-			this.a = this.ui.slider("0","a",0,3,true,1000000,this.constants.a);
-			this.b = this.ui.slider("1","b",0,3,true,1000000,this.constants.b);
-			this.c = this.ui.slider("2","c",0,3,true,1000000,this.constants.c);
-			this.d = this.ui.slider("3","d",0,3,true,1000000,this.constants.d);
-			this.e = this.ui.slider("4","e",0,3,true,1000000,this.constants.e);
-			this.f = this.ui.slider("5","f",0,3,true,1000000,this.constants.f);
-			var tmp;
-			var tmp1;
-			var tmp2;
-			var tmp3;
-			var tmp4;
-			var _this = this.ui.sliderStates;
-			if(!(__map_reserved["0"] != null?_this.getReserved("0"):_this.h["0"]).scrolling) {
-				var _this1 = this.ui.sliderStates;
-				tmp4 = (__map_reserved["1"] != null?_this1.getReserved("1"):_this1.h["1"]).scrolling;
-			} else {
-				tmp4 = true;
-			}
-			if(!tmp4) {
-				var _this2 = this.ui.sliderStates;
-				tmp3 = (__map_reserved["2"] != null?_this2.getReserved("2"):_this2.h["2"]).scrolling;
-			} else {
-				tmp3 = true;
-			}
-			if(!tmp3) {
-				var _this3 = this.ui.sliderStates;
-				tmp2 = (__map_reserved["3"] != null?_this3.getReserved("3"):_this3.h["3"]).scrolling;
-			} else {
-				tmp2 = true;
-			}
-			if(!tmp2) {
-				var _this4 = this.ui.sliderStates;
-				tmp1 = (__map_reserved["4"] != null?_this4.getReserved("4"):_this4.h["4"]).scrolling;
-			} else {
-				tmp1 = true;
-			}
-			if(!tmp1) {
-				var _this5 = this.ui.sliderStates;
-				tmp = (__map_reserved["5"] != null?_this5.getReserved("5"):_this5.h["5"]).scrolling;
-			} else {
-				tmp = true;
-			}
-			if(tmp) {
-				this.constants.a = this.a;
-				this.constants.b = this.b;
-				this.constants.c = this.c;
-				this.constants.d = this.d;
-				this.constants.e = this.e;
-				this.constants.f = this.f;
-			}
+			this.size = this.ui.slider("0","num of points (x10000)",1,10,true,1,5) | 0;
+			this.constants.a = this.ui.slider("1","a",0,3,true,10000,this.constants.a);
+			this.constants.b = this.ui.slider("2","b",0,3,true,10000,this.constants.b);
+			this.constants.c = this.ui.slider("3","c",0,3,true,10000,this.constants.c);
+			this.constants.d = this.ui.slider("4","d",0,3,true,10000,this.constants.d);
+			this.constants.e = this.ui.slider("5","e",0,3,true,10000,this.constants.e);
+			this.constants.f = this.ui.slider("6","f",0,3,true,10000,this.constants.f);
 			if(this.ui.button("Randomize")) {
 				this.constants = { a : 3 * Math.random(), b : 3 * Math.random(), c : 3 * Math.random(), d : 3 * Math.random(), e : 3 * Math.random(), f : 3 * Math.random()};
-				var _this6 = this.ui.sliderStates;
-				var tmp5 = __map_reserved["0"] != null?_this6.getReserved("0"):_this6.h["0"];
-				tmp5.value = this.constants.a;
-				var _this7 = this.ui.sliderStates;
-				var tmp6 = __map_reserved["1"] != null?_this7.getReserved("1"):_this7.h["1"];
-				tmp6.value = this.constants.b;
-				var _this8 = this.ui.sliderStates;
-				var tmp7 = __map_reserved["2"] != null?_this8.getReserved("2"):_this8.h["2"];
-				tmp7.value = this.constants.c;
-				var _this9 = this.ui.sliderStates;
-				var tmp8 = __map_reserved["3"] != null?_this9.getReserved("3"):_this9.h["3"];
-				tmp8.value = this.constants.d;
-				var _this10 = this.ui.sliderStates;
-				var tmp9 = __map_reserved["4"] != null?_this10.getReserved("4"):_this10.h["4"];
-				tmp9.value = this.constants.e;
-				var _this11 = this.ui.sliderStates;
-				var tmp10 = __map_reserved["5"] != null?_this11.getReserved("5"):_this11.h["5"];
-				tmp10.value = this.constants.f;
+				var _this = this.ui.sliderStates;
+				var tmp = __map_reserved["1"] != null?_this.getReserved("1"):_this.h["1"];
+				tmp.value = this.constants.a;
+				var _this1 = this.ui.sliderStates;
+				var tmp1 = __map_reserved["2"] != null?_this1.getReserved("2"):_this1.h["2"];
+				tmp1.value = this.constants.b;
+				var _this2 = this.ui.sliderStates;
+				var tmp2 = __map_reserved["3"] != null?_this2.getReserved("3"):_this2.h["3"];
+				tmp2.value = this.constants.c;
+				var _this3 = this.ui.sliderStates;
+				var tmp3 = __map_reserved["4"] != null?_this3.getReserved("4"):_this3.h["4"];
+				tmp3.value = this.constants.d;
+				var _this4 = this.ui.sliderStates;
+				var tmp4 = __map_reserved["5"] != null?_this4.getReserved("5"):_this4.h["5"];
+				tmp4.value = this.constants.e;
+				var _this5 = this.ui.sliderStates;
+				var tmp5 = __map_reserved["6"] != null?_this5.getReserved("6"):_this5.h["6"];
+				tmp5.value = this.constants.f;
 			}
 		}
 		this.ui.end();
