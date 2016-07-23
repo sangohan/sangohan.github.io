@@ -472,11 +472,11 @@ Visualization.prototype = {
 					var tmp5 = __map_reserved["7"] != null?_this5.getReserved("7"):_this5.h["7"];
 					tmp5.value = this.constants.f;
 				}
-				if(this.ui.node("8","view port",0,false)) {
+				if(this.ui.node("8","View Options",0,false)) {
 					this.x_offset = this.ui.slider("9","x offset",1,this.width * 2,true,1,this.x_offset) | 0;
 					this.y_offset = this.ui.slider("10","y offset",1,this.height * 2,true,1,this.y_offset) | 0;
 					this.zoom = this.ui.slider("11","zoom",1,16,true,1,this.zoom) | 0;
-					if(this.ui.button("reset view")) {
+					if(this.ui.button("Reset View Options")) {
 						this.set_viewport();
 						var _this6 = this.ui.sliderStates;
 						var tmp6 = __map_reserved["9"] != null?_this6.getReserved("9"):_this6.h["9"];
