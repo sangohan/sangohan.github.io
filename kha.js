@@ -390,6 +390,8 @@ var Visualization = function() {
 	this.points = { x : 0, y : 0, z : 0};
 	this.constants = { a : 3 * Math.random(), b : 3 * Math.random(), c : 3 * Math.random(), d : 3 * Math.random(), e : 3 * Math.random(), f : 3 * Math.random()};
 	this.size = 5;
+	this.x_offset = 600;
+	this.y_offset = 400;
 	kha_System.notifyOnRender($bind(this,this.render));
 	kha_Scheduler.addTimeTask($bind(this,this.update),0,0.0166666666666666664);
 };
@@ -402,6 +404,8 @@ Visualization.prototype = {
 	,size: null
 	,height: null
 	,width: null
+	,x_offset: null
+	,y_offset: null
 	,update: function() {
 	}
 	,render: function(framebuffer) {
@@ -426,39 +430,45 @@ Visualization.prototype = {
 		points.x = x1;
 		points.y = y1;
 		points.z = z1;
-		graphics.fillRect(x1 * this.width / 8 + this.width / 2,y1 * this.height / 8 + this.height / 2,1,1);
+		graphics.fillRect(x1 * this.width / 8 + this.x_offset,y1 * this.height / 8 + this.y_offset,1,1);
 		return points;
 	}
 	,gui: function(graphics) {
 		this.ui.begin(graphics);
-		if(this.ui.window("0",0,0,300,300)) {
-			this.size = this.ui.slider("0","num of points (x10000)",1,10,true,1,5) | 0;
-			this.constants.a = this.ui.slider("1","a",0,3,true,10000,this.constants.a);
-			this.constants.b = this.ui.slider("2","b",0,3,true,10000,this.constants.b);
-			this.constants.c = this.ui.slider("3","c",0,3,true,10000,this.constants.c);
-			this.constants.d = this.ui.slider("4","d",0,3,true,10000,this.constants.d);
-			this.constants.e = this.ui.slider("5","e",0,3,true,10000,this.constants.e);
-			this.constants.f = this.ui.slider("6","f",0,3,true,10000,this.constants.f);
-			if(this.ui.button("Randomize")) {
-				this.constants = { a : 3 * Math.random(), b : 3 * Math.random(), c : 3 * Math.random(), d : 3 * Math.random(), e : 3 * Math.random(), f : 3 * Math.random()};
-				var _this = this.ui.sliderStates;
-				var tmp = __map_reserved["1"] != null?_this.getReserved("1"):_this.h["1"];
-				tmp.value = this.constants.a;
-				var _this1 = this.ui.sliderStates;
-				var tmp1 = __map_reserved["2"] != null?_this1.getReserved("2"):_this1.h["2"];
-				tmp1.value = this.constants.b;
-				var _this2 = this.ui.sliderStates;
-				var tmp2 = __map_reserved["3"] != null?_this2.getReserved("3"):_this2.h["3"];
-				tmp2.value = this.constants.c;
-				var _this3 = this.ui.sliderStates;
-				var tmp3 = __map_reserved["4"] != null?_this3.getReserved("4"):_this3.h["4"];
-				tmp3.value = this.constants.d;
-				var _this4 = this.ui.sliderStates;
-				var tmp4 = __map_reserved["5"] != null?_this4.getReserved("5"):_this4.h["5"];
-				tmp4.value = this.constants.e;
-				var _this5 = this.ui.sliderStates;
-				var tmp5 = __map_reserved["6"] != null?_this5.getReserved("6"):_this5.h["6"];
-				tmp5.value = this.constants.f;
+		if(this.ui.window("0",0,0,300,400)) {
+			if(this.ui.node("0","Options",0,true)) {
+				this.size = this.ui.slider("1","num of points (x10000)",1,10,true,1,5) | 0;
+				this.constants.a = this.ui.slider("2","a",0,Math.PI / 2,true,10000,this.constants.a);
+				this.constants.b = this.ui.slider("3","b",0,Math.PI / 2,true,10000,this.constants.b);
+				this.constants.c = this.ui.slider("4","c",0,Math.PI / 2,true,10000,this.constants.c);
+				this.constants.d = this.ui.slider("5","d",0,Math.PI / 2,true,10000,this.constants.d);
+				this.constants.e = this.ui.slider("6","e",0,Math.PI / 2,true,10000,this.constants.e);
+				this.constants.f = this.ui.slider("7","f",0,Math.PI / 2,true,10000,this.constants.f);
+				if(this.ui.button("Randomize")) {
+					this.constants = { a : Math.PI / 2 * Math.random(), b : Math.PI / 2 * Math.random(), c : Math.PI / 2 * Math.random(), d : Math.PI / 2 * Math.random(), e : Math.PI / 2 * Math.random(), f : Math.PI / 2 * Math.random()};
+					var _this = this.ui.sliderStates;
+					var tmp = __map_reserved["2"] != null?_this.getReserved("2"):_this.h["2"];
+					tmp.value = this.constants.a;
+					var _this1 = this.ui.sliderStates;
+					var tmp1 = __map_reserved["3"] != null?_this1.getReserved("3"):_this1.h["3"];
+					tmp1.value = this.constants.b;
+					var _this2 = this.ui.sliderStates;
+					var tmp2 = __map_reserved["4"] != null?_this2.getReserved("4"):_this2.h["4"];
+					tmp2.value = this.constants.c;
+					var _this3 = this.ui.sliderStates;
+					var tmp3 = __map_reserved["5"] != null?_this3.getReserved("5"):_this3.h["5"];
+					tmp3.value = this.constants.d;
+					var _this4 = this.ui.sliderStates;
+					var tmp4 = __map_reserved["6"] != null?_this4.getReserved("6"):_this4.h["6"];
+					tmp4.value = this.constants.e;
+					var _this5 = this.ui.sliderStates;
+					var tmp5 = __map_reserved["7"] != null?_this5.getReserved("7"):_this5.h["7"];
+					tmp5.value = this.constants.f;
+				}
+				if(this.ui.node("8","position",0,false)) {
+					this.x_offset = this.ui.slider("9","x offset",1,this.width,true,1,this.x_offset) | 0;
+					this.y_offset = this.ui.slider("10","y offset",1,this.height,true,1,this.y_offset) | 0;
+				}
 			}
 		}
 		this.ui.end();
