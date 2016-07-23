@@ -384,14 +384,14 @@ _$UInt_UInt_$Impl_$.toFloat = function(this1) {
 	}
 };
 var Visualization = function() {
+	this.precision = 100000;
 	this.width = 768;
 	this.height = 1024;
 	this.ui = new zui_Zui(kha_Assets.fonts.Inconsolata,64);
 	this.points = { x : 0, y : 0, z : 0};
-	this.constants = { a : 3 * Math.random(), b : 3 * Math.random(), c : 3 * Math.random(), d : 3 * Math.random(), e : 3 * Math.random(), f : 3 * Math.random()};
-	this.size = 5;
-	this.x_offset = 600;
-	this.y_offset = 400;
+	this.constants = { a : Math.PI / 2 * Math.random(), b : Math.PI / 2 * Math.random(), c : Math.PI / 2 * Math.random(), d : Math.PI / 2 * Math.random(), e : Math.PI / 2 * Math.random(), f : Math.PI / 2 * Math.random()};
+	this.size = 3;
+	this.set_viewport();
 	kha_System.notifyOnRender($bind(this,this.render));
 	kha_Scheduler.addTimeTask($bind(this,this.update),0,0.0166666666666666664);
 };
@@ -406,6 +406,13 @@ Visualization.prototype = {
 	,width: null
 	,x_offset: null
 	,y_offset: null
+	,precision: null
+	,zoom: null
+	,set_viewport: function() {
+		this.x_offset = 600;
+		this.y_offset = 400;
+		this.zoom = 8;
+	}
 	,update: function() {
 	}
 	,render: function(framebuffer) {
@@ -430,20 +437,20 @@ Visualization.prototype = {
 		points.x = x1;
 		points.y = y1;
 		points.z = z1;
-		graphics.fillRect(x1 * this.width / 8 + this.x_offset,y1 * this.height / 8 + this.y_offset,1,1);
+		graphics.fillRect(x1 * this.width / this.zoom + this.x_offset,y1 * this.height / this.zoom + this.y_offset,1,1);
 		return points;
 	}
 	,gui: function(graphics) {
 		this.ui.begin(graphics);
-		if(this.ui.window("0",0,0,300,400)) {
+		if(this.ui.window("0",0,0,200,450)) {
 			if(this.ui.node("0","Options",0,true)) {
-				this.size = this.ui.slider("1","num of points (x10000)",1,10,true,1,5) | 0;
-				this.constants.a = this.ui.slider("2","a",0,Math.PI / 2,true,10000,this.constants.a);
-				this.constants.b = this.ui.slider("3","b",0,Math.PI / 2,true,10000,this.constants.b);
-				this.constants.c = this.ui.slider("4","c",0,Math.PI / 2,true,10000,this.constants.c);
-				this.constants.d = this.ui.slider("5","d",0,Math.PI / 2,true,10000,this.constants.d);
-				this.constants.e = this.ui.slider("6","e",0,Math.PI / 2,true,10000,this.constants.e);
-				this.constants.f = this.ui.slider("7","f",0,Math.PI / 2,true,10000,this.constants.f);
+				this.size = this.ui.slider("1","num of points (x10000)",1,10,true,1,this.size) | 0;
+				this.constants.a = this.ui.slider("2","a",0,Math.PI / 2,true,this.precision,this.constants.a);
+				this.constants.b = this.ui.slider("3","b",0,Math.PI / 2,true,this.precision,this.constants.b);
+				this.constants.c = this.ui.slider("4","c",0,Math.PI / 2,true,this.precision,this.constants.c);
+				this.constants.d = this.ui.slider("5","d",0,Math.PI / 2,true,this.precision,this.constants.d);
+				this.constants.e = this.ui.slider("6","e",0,Math.PI / 2,true,this.precision,this.constants.e);
+				this.constants.f = this.ui.slider("7","f",0,Math.PI / 2,true,this.precision,this.constants.f);
 				if(this.ui.button("Randomize")) {
 					this.constants = { a : Math.PI / 2 * Math.random(), b : Math.PI / 2 * Math.random(), c : Math.PI / 2 * Math.random(), d : Math.PI / 2 * Math.random(), e : Math.PI / 2 * Math.random(), f : Math.PI / 2 * Math.random()};
 					var _this = this.ui.sliderStates;
@@ -465,9 +472,22 @@ Visualization.prototype = {
 					var tmp5 = __map_reserved["7"] != null?_this5.getReserved("7"):_this5.h["7"];
 					tmp5.value = this.constants.f;
 				}
-				if(this.ui.node("8","position",0,false)) {
-					this.x_offset = this.ui.slider("9","x offset",1,this.width,true,1,this.x_offset) | 0;
-					this.y_offset = this.ui.slider("10","y offset",1,this.height,true,1,this.y_offset) | 0;
+				if(this.ui.node("8","view port",0,false)) {
+					this.x_offset = this.ui.slider("9","x offset",1,this.width * 2,true,1,this.x_offset) | 0;
+					this.y_offset = this.ui.slider("10","y offset",1,this.height * 2,true,1,this.y_offset) | 0;
+					this.zoom = this.ui.slider("11","zoom",1,16,true,1,this.zoom) | 0;
+					if(this.ui.button("reset view")) {
+						this.set_viewport();
+						var _this6 = this.ui.sliderStates;
+						var tmp6 = __map_reserved["9"] != null?_this6.getReserved("9"):_this6.h["9"];
+						tmp6.value = this.x_offset;
+						var _this7 = this.ui.sliderStates;
+						var tmp7 = __map_reserved["10"] != null?_this7.getReserved("10"):_this7.h["10"];
+						tmp7.value = this.y_offset;
+						var _this8 = this.ui.sliderStates;
+						var tmp8 = __map_reserved["11"] != null?_this8.getReserved("11"):_this8.h["11"];
+						tmp8.value = this.zoom;
+					}
 				}
 			}
 		}
