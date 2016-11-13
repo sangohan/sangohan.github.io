@@ -1237,6 +1237,12 @@ haxe_io_Bytes.prototype = {
 		}
 		this.data.setFloat64(pos,v,true);
 	}
+	,setFloat: function(pos,v) {
+		if(this.data == null) {
+			this.data = new DataView(this.b.buffer,this.b.byteOffset,this.b.byteLength);
+		}
+		this.data.setFloat32(pos,v,true);
+	}
 	,getUInt16: function(pos) {
 		if(this.data == null) {
 			this.data = new DataView(this.b.buffer,this.b.byteOffset,this.b.byteLength);
@@ -2159,10 +2165,10 @@ js_html_compat_Uint8Array._subarray = function(start,end) {
 };
 var kha_ImageList = function() {
 	this.names = ["entity","tileset"];
-	this.tilesetDescription = { files : ["tileset.png"], type : "image", name : "tileset"};
+	this.tilesetDescription = { files : ["tileset.png"], original_height : 16, type : "image", original_width : 32, name : "tileset"};
 	this.tilesetName = "tileset";
 	this.tileset = null;
-	this.entityDescription = { files : ["entity.png"], type : "image", name : "entity"};
+	this.entityDescription = { files : ["entity.png"], original_height : 10, type : "image", original_width : 10, name : "entity"};
 	this.entityName = "entity";
 	this.entity = null;
 };
@@ -3214,6 +3220,9 @@ kha_LoaderImpl.loadImageFromDescription = function(desc,done) {
 kha_LoaderImpl.getSoundFormats = function() {
 	var element = window.document.createElement("audio");
 	var formats = [];
+	if(element.canPlayType("audio/mp4") != "") {
+		formats.push("mp4");
+	}
 	if(kha_SystemImpl._hasWebAudio || element.canPlayType("audio/ogg") != "") {
 		formats.push("ogg");
 	}
@@ -3221,13 +3230,23 @@ kha_LoaderImpl.getSoundFormats = function() {
 };
 kha_LoaderImpl.loadSoundFromDescription = function(desc,done) {
 	if(kha_SystemImpl._hasWebAudio) {
-		var element = window.document.createElement("audio");
-		var _g1 = 0;
-		var _g = desc.files.length;
-		while(_g1 < _g) {
-			var file = desc.files[_g1++];
-			if(StringTools.endsWith(file,".ogg")) {
-				new kha_js_WebAudioSound(file,done);
+		if(window.document.createElement("audio").canPlayType("audio/mp4") != "") {
+			var _g1 = 0;
+			var _g = desc.files.length;
+			while(_g1 < _g) {
+				var file = desc.files[_g1++];
+				if(StringTools.endsWith(file,".mp4")) {
+					new kha_js_WebAudioSound(file,done);
+					return;
+				}
+			}
+		}
+		var _g11 = 0;
+		var _g2 = desc.files.length;
+		while(_g11 < _g2) {
+			var file1 = desc.files[_g11++];
+			if(StringTools.endsWith(file1,".ogg")) {
+				new kha_js_WebAudioSound(file1,done);
 				return;
 			}
 		}
@@ -3236,26 +3255,51 @@ kha_LoaderImpl.loadSoundFromDescription = function(desc,done) {
 	}
 };
 kha_LoaderImpl.getVideoFormats = function() {
-	return ["webm"];
+	return ["mp4","webm"];
 };
 kha_LoaderImpl.loadVideoFromDescription = function(desc,done) {
 	new kha_js_Video(desc.files,done);
 };
 kha_LoaderImpl.loadBlobFromDescription = function(desc,done) {
-	var fs = require('fs');
-	var path = require('path');
-	var app = require('remote').require('app');
-	fs.readFile(path.join(app.getAppPath(),desc.files[0]),function(err,data) {
-		var byteArray = new Uint8Array(data);
-		var bytes = new haxe_io_Bytes(new ArrayBuffer(byteArray.byteLength));
-		var _g1 = 0;
-		var _g = byteArray.byteLength;
-		while(_g1 < _g) {
-			var i = _g1++;
-			bytes.b[i] = byteArray[i] & 255;
+	var request = new XMLHttpRequest();
+	request.open("GET",desc.files[0],true);
+	request.responseType = "arraybuffer";
+	request.onreadystatechange = function() {
+		if(request.readyState != 4) {
+			return;
 		}
-		done(new kha_internal_BytesBlob(bytes));
-	});
+		if(request.status >= 200 && request.status < 400) {
+			var bytes = null;
+			var arrayBuffer = request.response;
+			if(arrayBuffer != null) {
+				var byteArray = new Uint8Array(arrayBuffer);
+				bytes = new haxe_io_Bytes(new ArrayBuffer(byteArray.byteLength));
+				var _g1 = 0;
+				var _g = byteArray.byteLength;
+				while(_g1 < _g) {
+					var i = _g1++;
+					bytes.b[i] = byteArray[i] & 255;
+				}
+			} else if(request.responseBody != null) {
+				var data = VBArray(request.responseBody).toArray();
+				bytes = new haxe_io_Bytes(new ArrayBuffer(data.length));
+				var _g11 = 0;
+				var _g2 = data.length;
+				while(_g11 < _g2) {
+					var i1 = _g11++;
+					bytes.b[i1] = data[i1] & 255;
+				}
+			} else {
+				haxe_Log.trace("Error loading " + desc.files[0],{ fileName : "LoaderImpl.hx", lineNumber : 121, className : "kha.LoaderImpl", methodName : "loadBlobFromDescription"});
+				window.console.log("loadBlob failed");
+			}
+			done(new kha_internal_BytesBlob(bytes));
+		} else {
+			haxe_Log.trace("Error loading " + desc.files[0],{ fileName : "LoaderImpl.hx", lineNumber : 127, className : "kha.LoaderImpl", methodName : "loadBlobFromDescription"});
+			window.console.log("loadBlob failed");
+		}
+	};
+	request.send(null);
 };
 kha_LoaderImpl.loadFontFromDescription = function(desc,done) {
 	kha_LoaderImpl.loadBlobFromDescription(desc,function(blob) {
@@ -3327,8 +3371,9 @@ kha_Scheduler.init = function() {
 	kha_Scheduler.currentGroupId = 0;
 	kha_Scheduler.timeTasks = [];
 	kha_Scheduler.pausedTimeTasks = [];
+	kha_Scheduler.outdatedTimeTasks = [];
+	kha_Scheduler.timeTasksScratchpad = [];
 	kha_Scheduler.frameTasks = [];
-	kha_Scheduler.toDeleteTime = [];
 	kha_Scheduler.toDeleteFrame = [];
 };
 kha_Scheduler.start = function(restartTimers) {
@@ -3370,20 +3415,67 @@ kha_Scheduler.stop = function() {
 kha_Scheduler.isStopped = function() {
 	return kha_Scheduler.stopped;
 };
-kha_Scheduler.back = function(time) {
-	kha_Scheduler.lastTime = time;
+kha_Scheduler.warpTimeTasks = function(time,tasks) {
 	var _g = 0;
-	var _g1 = kha_Scheduler.timeTasks;
-	while(_g < _g1.length) {
-		var timeTask = _g1[_g];
+	while(_g < tasks.length) {
+		var timeTask = tasks[_g];
 		++_g;
 		if(timeTask.start >= time) {
 			timeTask.next = timeTask.start;
-		} else {
-			timeTask.next = timeTask.start;
-			while(timeTask.next < time) timeTask.next += timeTask.period;
+		} else if(timeTask.period > 0) {
+			var times = Math.ceil((time - timeTask.start) / timeTask.period);
+			timeTask.next = timeTask.start + times * timeTask.period;
 		}
 	}
+};
+kha_Scheduler.back = function(time) {
+	if(time >= kha_Scheduler.lastTime) {
+		return;
+	}
+	kha_Scheduler.lastTime = time;
+	kha_Scheduler.warpTimeTasks(time,kha_Scheduler.outdatedTimeTasks);
+	kha_Scheduler.warpTimeTasks(time,kha_Scheduler.timeTasks);
+	var _g = 0;
+	var _g1 = kha_Scheduler.outdatedTimeTasks;
+	while(_g < _g1.length) {
+		var task = _g1[_g];
+		++_g;
+		if(task.next >= time) {
+			kha_Scheduler.timeTasksScratchpad.push(task);
+		}
+	}
+	var _g2 = 0;
+	var _g11 = kha_Scheduler.timeTasksScratchpad;
+	while(_g2 < _g11.length) {
+		var task1 = _g11[_g2];
+		++_g2;
+		HxOverrides.remove(kha_Scheduler.outdatedTimeTasks,task1);
+	}
+	var _g3 = 0;
+	var _g12 = kha_Scheduler.timeTasksScratchpad;
+	while(_g3 < _g12.length) {
+		var task2 = _g12[_g3];
+		++_g3;
+		kha_Scheduler.insertSorted(kha_Scheduler.timeTasks,task2);
+	}
+	while(kha_Scheduler.timeTasksScratchpad.length > 0) HxOverrides.remove(kha_Scheduler.timeTasksScratchpad,kha_Scheduler.timeTasksScratchpad[0]);
+	var _g4 = 0;
+	var _g13 = kha_Scheduler.outdatedTimeTasks;
+	while(_g4 < _g13.length) {
+		var task3 = _g13[_g4];
+		++_g4;
+		if(task3.next < time - 1.0) {
+			kha_Scheduler.timeTasksScratchpad.push(task3);
+		}
+	}
+	var _g5 = 0;
+	var _g14 = kha_Scheduler.timeTasksScratchpad;
+	while(_g5 < _g14.length) {
+		var task4 = _g14[_g5];
+		++_g5;
+		HxOverrides.remove(kha_Scheduler.outdatedTimeTasks,task4);
+	}
+	while(kha_Scheduler.timeTasksScratchpad.length > 0) HxOverrides.remove(kha_Scheduler.timeTasksScratchpad,kha_Scheduler.timeTasksScratchpad[0]);
 };
 kha_Scheduler.executeFrame = function() {
 	var now = kha_Scheduler.realTime();
@@ -3454,47 +3546,42 @@ kha_Scheduler.executeFrame = function() {
 			if(kha_Scheduler.activeTimeTask.active && kha_Scheduler.activeTimeTask.task()) {
 				if(kha_Scheduler.activeTimeTask.period > 0 && (kha_Scheduler.activeTimeTask.duration == 0 || kha_Scheduler.activeTimeTask.duration >= kha_Scheduler.activeTimeTask.start + kha_Scheduler.activeTimeTask.next)) {
 					kha_Scheduler.insertSorted(kha_Scheduler.timeTasks,kha_Scheduler.activeTimeTask);
+				} else {
+					kha_Scheduler.archiveTimeTask(kha_Scheduler.activeTimeTask,frameEnd);
 				}
 			} else {
 				kha_Scheduler.activeTimeTask.active = false;
+				kha_Scheduler.archiveTimeTask(kha_Scheduler.activeTimeTask,frameEnd);
 			}
 		} else {
 			break;
 		}
 	}
 	kha_Scheduler.activeTimeTask = null;
-	var _g6 = 0;
-	var _g15 = kha_Scheduler.timeTasks;
-	while(_g6 < _g15.length) {
-		var timeTask1 = _g15[_g6];
-		++_g6;
-		if(!timeTask1.active) {
-			kha_Scheduler.toDeleteTime.push(timeTask1);
-		}
-	}
-	while(kha_Scheduler.toDeleteTime.length > 0) HxOverrides.remove(kha_Scheduler.timeTasks,kha_Scheduler.toDeleteTime.pop());
 	kha_Scheduler.sortFrameTasks();
-	var _g7 = 0;
-	var _g16 = kha_Scheduler.frameTasks;
-	while(_g7 < _g16.length) {
-		var frameTask = _g16[_g7];
-		++_g7;
+	var _g6 = 0;
+	var _g15 = kha_Scheduler.frameTasks;
+	while(_g6 < _g15.length) {
+		var frameTask = _g15[_g6];
+		++_g6;
 		if(!kha_Scheduler.stopped && !frameTask.paused && frameTask.active) {
 			if(!frameTask.task()) {
 				frameTask.active = false;
 			}
 		}
 	}
-	var _g8 = 0;
-	var _g17 = kha_Scheduler.frameTasks;
-	while(_g8 < _g17.length) {
-		var frameTask1 = _g17[_g8];
-		++_g8;
+	var _g7 = 0;
+	var _g16 = kha_Scheduler.frameTasks;
+	while(_g7 < _g16.length) {
+		var frameTask1 = _g16[_g7];
+		++_g7;
 		if(!frameTask1.active) {
 			kha_Scheduler.toDeleteFrame.push(frameTask1);
 		}
 	}
 	while(kha_Scheduler.toDeleteFrame.length > 0) HxOverrides.remove(kha_Scheduler.frameTasks,kha_Scheduler.toDeleteFrame.pop());
+};
+kha_Scheduler.archiveTimeTask = function(timeTask,frameEnd) {
 };
 kha_Scheduler.time = function() {
 	return kha_Scheduler.current;
@@ -3686,13 +3773,20 @@ kha_Scheduler.removeTimeTasks = function(groupId) {
 		++_g;
 		if(timeTask.groupId == groupId) {
 			timeTask.active = false;
-			kha_Scheduler.toDeleteTime.push(timeTask);
+			kha_Scheduler.timeTasksScratchpad.push(timeTask);
 		}
 	}
-	if(kha_Scheduler.activeTimeTask != null && kha_Scheduler.activeTimeTask.groupId == groupId) {
-		kha_Scheduler.activeTimeTask.paused = false;
+	var _g2 = 0;
+	var _g11 = kha_Scheduler.timeTasksScratchpad;
+	while(_g2 < _g11.length) {
+		var timeTask1 = _g11[_g2];
+		++_g2;
+		HxOverrides.remove(kha_Scheduler.timeTasks,timeTask1);
 	}
-	while(kha_Scheduler.toDeleteTime.length > 0) HxOverrides.remove(kha_Scheduler.timeTasks,kha_Scheduler.toDeleteTime.pop());
+	while(kha_Scheduler.timeTasksScratchpad.length > 0) HxOverrides.remove(kha_Scheduler.timeTasksScratchpad,kha_Scheduler.timeTasksScratchpad[0]);
+	if(kha_Scheduler.activeTimeTask != null && kha_Scheduler.activeTimeTask.groupId == groupId) {
+		kha_Scheduler.activeTimeTask.active = false;
+	}
 };
 kha_Scheduler.numTasksInSchedule = function() {
 	return kha_Scheduler.timeTasks.length + kha_Scheduler.frameTasks.length;
@@ -3757,18 +3851,18 @@ kha_Shaders.init = function() {
 	var data4 = Reflect.field(kha_Shaders,"painter_image_fragData");
 	var bytes4 = haxe_Unserializer.run(data4);
 	kha_Shaders.painter_image_frag = new kha_graphics4_FragmentShader(kha_internal_BytesBlob.fromBytes(bytes4),"painter_image_frag");
-	var data5 = Reflect.field(kha_Shaders,"painter_text_fragData");
+	var data5 = Reflect.field(kha_Shaders,"painter_image_vertData");
 	var bytes5 = haxe_Unserializer.run(data5);
-	kha_Shaders.painter_text_frag = new kha_graphics4_FragmentShader(kha_internal_BytesBlob.fromBytes(bytes5),"painter_text_frag");
-	var data6 = Reflect.field(kha_Shaders,"painter_text_vertData");
+	kha_Shaders.painter_image_vert = new kha_graphics4_VertexShader(kha_internal_BytesBlob.fromBytes(bytes5),"painter_image_vert");
+	var data6 = Reflect.field(kha_Shaders,"painter_text_fragData");
 	var bytes6 = haxe_Unserializer.run(data6);
-	kha_Shaders.painter_text_vert = new kha_graphics4_VertexShader(kha_internal_BytesBlob.fromBytes(bytes6),"painter_text_vert");
-	var data7 = Reflect.field(kha_Shaders,"painter_video_fragData");
+	kha_Shaders.painter_text_frag = new kha_graphics4_FragmentShader(kha_internal_BytesBlob.fromBytes(bytes6),"painter_text_frag");
+	var data7 = Reflect.field(kha_Shaders,"painter_text_vertData");
 	var bytes7 = haxe_Unserializer.run(data7);
-	kha_Shaders.painter_video_frag = new kha_graphics4_FragmentShader(kha_internal_BytesBlob.fromBytes(bytes7),"painter_video_frag");
-	var data8 = Reflect.field(kha_Shaders,"painter_image_vertData");
+	kha_Shaders.painter_text_vert = new kha_graphics4_VertexShader(kha_internal_BytesBlob.fromBytes(bytes7),"painter_text_vert");
+	var data8 = Reflect.field(kha_Shaders,"painter_video_fragData");
 	var bytes8 = haxe_Unserializer.run(data8);
-	kha_Shaders.painter_image_vert = new kha_graphics4_VertexShader(kha_internal_BytesBlob.fromBytes(bytes8),"painter_image_vert");
+	kha_Shaders.painter_video_frag = new kha_graphics4_FragmentShader(kha_internal_BytesBlob.fromBytes(bytes8),"painter_video_frag");
 	var data9 = Reflect.field(kha_Shaders,"painter_video_vertData");
 	var bytes9 = haxe_Unserializer.run(data9);
 	kha_Shaders.painter_video_vert = new kha_graphics4_VertexShader(kha_internal_BytesBlob.fromBytes(bytes9),"painter_video_vert");
@@ -3967,10 +4061,7 @@ kha_SystemImpl.errorHandler = function(message,source,lineno,colno,error) {
 };
 kha_SystemImpl.init = function(options,callback) {
 	kha_SystemImpl.options = options;
-	window.onerror = kha_SystemImpl.errorHandler;
-	require("web-frame").setZoomLevelLimits(1,1);
-	var electron = require('electron');
-	electron.ipcRenderer.send("asynchronous-message",{ type : "showWindow", width : options.width, height : options.height});
+	kha_SystemImpl.mobile = kha_SystemImpl.isMobile();
 	kha_SystemImpl.init2();
 	callback();
 };
@@ -6790,9 +6881,6 @@ kha_audio2_ogg_vorbis_VorbisDecodeState.prototype = {
 		if(this.nextSeg >= this.segments.length) {
 			this.nextSeg = -1;
 		}
-		if(this.bytesInSeg != 0) {
-			throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisDecodeState.hx", lineNumber : 184, className : "kha.audio2.ogg.vorbis.VorbisDecodeState", methodName : "next"}));
-		}
 		this.bytesInSeg = len;
 		return len;
 	}
@@ -7274,9 +7362,6 @@ kha_audio2_ogg_vorbis_VorbisDecodeState.prototype = {
 		var _g = 27;
 		while(_g1 < _g) vec[_g1++] = this.input.readByte();
 		var pageHeader = vec;
-		if(!(pageHeader[0] == 79 && pageHeader[1] == 103 && pageHeader[2] == 103 && pageHeader[3] == 83)) {
-			throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisDecodeState.hx", lineNumber : 660, className : "kha.audio2.ogg.vorbis.VorbisDecodeState", methodName : "analyzePage"}));
-		}
 		var n = pageHeader[26];
 		this.inputPosition += n;
 		var vec1 = new Array(n);
@@ -7362,9 +7447,6 @@ kha_audio2_ogg_vorbis_VorbisDecodeState.prototype = {
 	}
 	,decodeScalarRaw: function(c) {
 		this.prepHuffman();
-		if(!(c.sortedCodewords != null || c.codewords != null)) {
-			throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisDecodeState.hx", lineNumber : 787, className : "kha.audio2.ogg.vorbis.VorbisDecodeState", methodName : "decodeScalarRaw"}));
-		}
 		var codewordLengths = c.codewordLengths;
 		var codewords = c.codewords;
 		var sortedCodewords = c.sortedCodewords;
@@ -7397,9 +7479,6 @@ kha_audio2_ogg_vorbis_VorbisDecodeState.prototype = {
 			}
 			this.validBits = 0;
 			return -1;
-		}
-		if(!(!c.sparse)) {
-			throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisDecodeState.hx", lineNumber : 829, className : "kha.audio2.ogg.vorbis.VorbisDecodeState", methodName : "decodeScalarRaw"}));
 		}
 		var _g1 = 0;
 		var _g = c.entries;
@@ -7800,7 +7879,7 @@ kha_audio2_ogg_vorbis_VorbisDecoder.prototype = {
 		} else if(len == this.header.blocksize1) {
 			return this.window[1];
 		} else {
-			throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisDecoder.hx", lineNumber : 466, className : "kha.audio2.ogg.vorbis.VorbisDecoder", methodName : "getWindow"}));
+			return null;
 		}
 	}
 	,initBlocksize: function(bs,n) {
@@ -9012,9 +9091,6 @@ var kha_audio2_ogg_vorbis_VorbisTools = function() { };
 $hxClasses["kha.audio2.ogg.vorbis.VorbisTools"] = kha_audio2_ogg_vorbis_VorbisTools;
 kha_audio2_ogg_vorbis_VorbisTools.__name__ = true;
 kha_audio2_ogg_vorbis_VorbisTools.assert = function(b,p) {
-	if(!b) {
-		throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",p));
-	}
 };
 kha_audio2_ogg_vorbis_VorbisTools.neighbors = function(x,n) {
 	var low = -1;
@@ -9071,12 +9147,8 @@ kha_audio2_ogg_vorbis_VorbisTools.lookup1Values = function(entries,dim) {
 	if((Math.pow(r + 1,dim) | 0) <= entries) {
 		++r;
 	}
-	if(!(Math.pow(r + 1,dim) > entries)) {
-		throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisTools.hx", lineNumber : 155, className : "kha.audio2.ogg.vorbis.VorbisTools", methodName : "lookup1Values"}));
-	}
-	if((Math.pow(r,dim) | 0) > entries) {
-		throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "VorbisTools.hx", lineNumber : 156, className : "kha.audio2.ogg.vorbis.VorbisTools", methodName : "lookup1Values"}));
-	}
+	Math.pow(r + 1,dim);
+	Math.pow(r,dim);
 	return r;
 };
 kha_audio2_ogg_vorbis_VorbisTools.computeWindow = function(n,window) {
@@ -10086,9 +10158,6 @@ kha_audio2_ogg_vorbis_data_Codebook.prototype = {
 	}
 	,includeInSort: function(len) {
 		if(this.sparse) {
-			if(len == 255) {
-				throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "Codebook.hx", lineNumber : 201, className : "kha.audio2.ogg.vorbis.data.Codebook", methodName : "includeInSort"}));
-			}
 			return true;
 		} else if(len == 255) {
 			return false;
@@ -10110,9 +10179,7 @@ kha_audio2_ogg_vorbis_data_Codebook.prototype = {
 			++k;
 		}
 		if(k == n) {
-			if(this.sortedEntries != 0) {
-				throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "Codebook.hx", lineNumber : 228, className : "kha.audio2.ogg.vorbis.data.Codebook", methodName : "computeCodewords"}));
-			}
+			var b = this.sortedEntries == 0;
 			return true;
 		}
 		var m = 0;
@@ -10155,9 +10222,6 @@ kha_audio2_ogg_vorbis_data_Codebook.prototype = {
 			if(z != len[i]) {
 				var y = len[i];
 				while(y > z) {
-					if(available[y] != 0) {
-						throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "Codebook.hx", lineNumber : 272, className : "kha.audio2.ogg.vorbis.data.Codebook", methodName : "computeCodewords"}));
-					}
 					available[y] = res + (1 << 32 - y);
 					--y;
 				}
@@ -10173,31 +10237,15 @@ kha_audio2_ogg_vorbis_data_Codebook.prototype = {
 			while(_g1 < _g) {
 				var i = _g1++;
 				var len = lengths[i];
-				var tmp;
-				if(this.sparse) {
-					if(len == 255) {
-						throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "Codebook.hx", lineNumber : 201, className : "kha.audio2.ogg.vorbis.data.Codebook", methodName : "includeInSort"}));
-					}
-					tmp = true;
-				} else if(len == 255) {
-					tmp = false;
-				} else if(len > 10) {
-					tmp = true;
-				} else {
-					tmp = false;
-				}
-				if(tmp) {
-					var tmp1 = k++;
+				if(this.sparse?true:len == 255?false:len > 10) {
+					var tmp = k++;
 					var n = this.codewords[i];
 					n = (n & -1431655766) >>> 1 | (n & 1431655765) << 1;
 					n = (n & -858993460) >>> 2 | (n & 858993459) << 2;
 					n = (n & -252645136) >>> 4 | (n & 252645135) << 4;
 					n = (n & -16711936) >>> 8 | (n & 16711935) << 8;
-					this.sortedCodewords[tmp1] = n >>> 16 | n << 16;
+					this.sortedCodewords[tmp] = n >>> 16 | n << 16;
 				}
-			}
-			if(k != this.sortedEntries) {
-				throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "Codebook.hx", lineNumber : 296, className : "kha.audio2.ogg.vorbis.data.Codebook", methodName : "computeSortedHuffman"}));
 			}
 		} else {
 			var _g11 = 0;
@@ -10219,20 +10267,7 @@ kha_audio2_ogg_vorbis_data_Codebook.prototype = {
 		while(_g12 < _g3) {
 			var i2 = _g12++;
 			var huffLen = this.sparse?lengths[values[i2]]:lengths[i2];
-			var tmp2;
-			if(this.sparse) {
-				if(huffLen == 255) {
-					throw new js__$Boot_HaxeError(new kha_audio2_ogg_vorbis_data_ReaderError(kha_audio2_ogg_vorbis_data_ReaderErrorType.OTHER,"",{ fileName : "Codebook.hx", lineNumber : 201, className : "kha.audio2.ogg.vorbis.data.Codebook", methodName : "includeInSort"}));
-				}
-				tmp2 = true;
-			} else if(huffLen == 255) {
-				tmp2 = false;
-			} else if(huffLen > 10) {
-				tmp2 = true;
-			} else {
-				tmp2 = false;
-			}
-			if(tmp2) {
+			if(this.sparse?true:huffLen == 255?false:huffLen > 10) {
 				var n2 = this.codewords[i2];
 				n2 = (n2 & -1431655766) >>> 1 | (n2 & 1431655765) << 1;
 				n2 = (n2 & -858993460) >>> 2 | (n2 & 858993459) << 2;
@@ -19183,6 +19218,9 @@ var kha_js_Video = function(filenames,done) {
 		if(this.element.canPlayType("video/webm") != "" && StringTools.endsWith(filename,".webm")) {
 			this.filenames.push(filename);
 		}
+		if(this.element.canPlayType("video/mp4") != "" && StringTools.endsWith(filename,".mp4")) {
+			this.filenames.push(filename);
+		}
 	}
 	this.element.addEventListener("error",$bind(this,this.errorListener),false);
 	this.element.addEventListener("canplaythrough",$bind(this,this.canPlayThroughListener),false);
@@ -20274,6 +20312,9 @@ var kha_network_Network = function(url,port) {
 	this.open = false;
 	var _gthis = this;
 	this.socket = new WebSocket("ws://" + url + ":" + port);
+	this.socket.onerror = function(error) {
+		haxe_Log.trace("Network error: " + error,{ fileName : "Network.hx", lineNumber : 14, className : "kha.network.Network", methodName : "new"});
+	};
 	this.socket.binaryType = "arraybuffer";
 	this.socket.onopen = function() {
 		_gthis.open = true;
@@ -20308,6 +20349,7 @@ kha_network_State.prototype = {
 	,__class__: kha_network_State
 };
 var kha_network_Session = function(players,address,port) {
+	this.ping = 1;
 	this.controllers = new haxe_ds_IntMap();
 	this.entities = new haxe_ds_IntMap();
 	kha_network_Session.instance = this;
@@ -20324,6 +20366,7 @@ kha_network_Session.prototype = {
 	entities: null
 	,controllers: null
 	,players: null
+	,ping: null
 	,address: null
 	,port: null
 	,startCallback: null
@@ -20338,14 +20381,20 @@ kha_network_Session.prototype = {
 		this.entities.h[key] = entity;
 	}
 	,addController: function(controller) {
-		haxe_Log.trace("Adding controller id " + controller._id(),{ fileName : "Session.hx", lineNumber : 75, className : "kha.network.Session", methodName : "addController"});
+		haxe_Log.trace("Adding controller id " + controller._id(),{ fileName : "Session.hx", lineNumber : 80, className : "kha.network.Session", methodName : "addController"});
 		var key = controller._id();
 		this.controllers.h[key] = controller;
 	}
 	,sendControllerUpdate: function(id,bytes) {
 		if(this.controllers.h.hasOwnProperty(id)) {
-			this.network.send(bytes,false);
+			this.sendToServer(bytes);
 		}
+	}
+	,sendPing: function() {
+		var bytes = new haxe_io_Bytes(new ArrayBuffer(5));
+		bytes.b[0] = 4;
+		bytes.setFloat(1,kha_Scheduler.realTime());
+		this.sendToServer(bytes);
 	}
 	,receive: function(bytes,client) {
 		switch(bytes.b[0]) {
@@ -20366,67 +20415,85 @@ kha_network_Session.prototype = {
 			kha_Scheduler.back(time);
 			break;
 		case 3:
-			var args = [];
-			var index = 1;
-			var classnamelength = bytes.getUInt16(1);
-			index = 3;
-			var classname = "";
-			var _g1 = 0;
-			while(_g1 < classnamelength) {
-				++_g1;
-				classname += String.fromCharCode(bytes.b[index]);
-				++index;
+			switch(bytes.b[1]) {
+			case 0:
+				break;
+			case 1:
+				this.executeRPC(bytes);
+				break;
 			}
-			var methodnamelength = bytes.getUInt16(index);
-			index += 2;
-			var methodname = "";
-			var _g11 = 0;
-			while(_g11 < methodnamelength) {
-				++_g11;
-				methodname += String.fromCharCode(bytes.b[index]);
-				++index;
-			}
-			while(index < bytes.length) {
-				var type = bytes.b[index];
-				++index;
-				switch(type) {
-				case 66:
-					var value = bytes.b[index] == 1;
-					++index;
-					haxe_Log.trace("Bool: " + (value == null?"null":"" + value),{ fileName : "Session.hx", lineNumber : 194, className : "kha.network.Session", methodName : "receive"});
-					args.push(value);
-					break;
-				case 70:
-					var value1 = bytes.getDouble(index);
-					index += 8;
-					haxe_Log.trace("Float: " + value1,{ fileName : "Session.hx", lineNumber : 199, className : "kha.network.Session", methodName : "receive"});
-					args.push(value1);
-					break;
-				case 73:
-					var value2 = bytes.getInt32(index);
-					index += 4;
-					haxe_Log.trace("Int: " + value2,{ fileName : "Session.hx", lineNumber : 204, className : "kha.network.Session", methodName : "receive"});
-					args.push(value2);
-					break;
-				case 83:
-					var length = bytes.getUInt16(index);
-					index += 2;
-					var str = "";
-					var _g12 = 0;
-					while(_g12 < length) {
-						++_g12;
-						str += String.fromCharCode(bytes.b[index]);
-						++index;
-					}
-					haxe_Log.trace("String: " + str,{ fileName : "Session.hx", lineNumber : 214, className : "kha.network.Session", methodName : "receive"});
-					args.push(str);
-					break;
-				default:
-					haxe_Log.trace("Unknown argument type.",{ fileName : "Session.hx", lineNumber : 217, className : "kha.network.Session", methodName : "receive"});
-				}
-			}
-			Reflect.field(Type.resolveClass(classname),methodname + "_remotely").apply(null,args);
 			break;
+		case 4:
+			var sendTime = bytes.getFloat(1);
+			this.ping = kha_Scheduler.realTime() - sendTime;
+			break;
+		}
+	}
+	,executeRPC: function(bytes) {
+		var args = [];
+		var syncId = bytes.getInt32(2);
+		var index = 6;
+		var classnamelength = bytes.getUInt16(6);
+		index = 8;
+		var classname = "";
+		var _g1 = 0;
+		while(_g1 < classnamelength) {
+			++_g1;
+			classname += String.fromCharCode(bytes.b[index]);
+			++index;
+		}
+		var methodnamelength = bytes.getUInt16(index);
+		index += 2;
+		var methodname = "";
+		var _g11 = 0;
+		while(_g11 < methodnamelength) {
+			++_g11;
+			methodname += String.fromCharCode(bytes.b[index]);
+			++index;
+		}
+		while(index < bytes.length) {
+			var type = bytes.b[index];
+			++index;
+			switch(type) {
+			case 66:
+				var value = bytes.b[index] == 1;
+				++index;
+				haxe_Log.trace("Bool: " + (value == null?"null":"" + value),{ fileName : "Session.hx", lineNumber : 242, className : "kha.network.Session", methodName : "executeRPC"});
+				args.push(value);
+				break;
+			case 70:
+				var value1 = bytes.getDouble(index);
+				index += 8;
+				haxe_Log.trace("Float: " + value1,{ fileName : "Session.hx", lineNumber : 247, className : "kha.network.Session", methodName : "executeRPC"});
+				args.push(value1);
+				break;
+			case 73:
+				var value2 = bytes.getInt32(index);
+				index += 4;
+				haxe_Log.trace("Int: " + value2,{ fileName : "Session.hx", lineNumber : 252, className : "kha.network.Session", methodName : "executeRPC"});
+				args.push(value2);
+				break;
+			case 83:
+				var length = bytes.getUInt16(index);
+				index += 2;
+				var str = "";
+				var _g12 = 0;
+				while(_g12 < length) {
+					++_g12;
+					str += String.fromCharCode(bytes.b[index]);
+					++index;
+				}
+				haxe_Log.trace("String: " + str,{ fileName : "Session.hx", lineNumber : 262, className : "kha.network.Session", methodName : "executeRPC"});
+				args.push(str);
+				break;
+			default:
+				haxe_Log.trace("Unknown argument type.",{ fileName : "Session.hx", lineNumber : 265, className : "kha.network.Session", methodName : "executeRPC"});
+			}
+		}
+		if(syncId == -1) {
+			Reflect.field(Type.resolveClass(classname),methodname + "_remotely").apply(null,args);
+		} else {
+			Reflect.field(kha_network_SyncBuilder.objects[syncId],methodname + "_remotely").apply(kha_network_SyncBuilder.objects[syncId],args);
 		}
 	}
 	,waitForStart: function(callback) {
@@ -20436,11 +20503,19 @@ kha_network_Session.prototype = {
 		this.network.listen(function(bytes) {
 			_gthis.receive(bytes);
 		});
+		this.ping = 1;
+		kha_Scheduler.addTimeTask($bind(this,this.sendPing),0,1);
 	}
 	,update: function() {
 	}
+	,sendToServer: function(bytes) {
+		this.network.send(bytes,false);
+	}
 	,__class__: kha_network_Session
 };
+var kha_network_SyncBuilder = function() { };
+$hxClasses["kha.network.SyncBuilder"] = kha_network_SyncBuilder;
+kha_network_SyncBuilder.__name__ = true;
 var kha_simd_Float32x4 = function(_0,_1,_2,_3) {
 	this._0 = _0;
 	this._1 = _1;
@@ -22836,6 +22911,7 @@ kha__$Color_Color_$Impl_$.Pink = kha__$Color_Color_$Impl_$._new(-16181);
 kha__$Color_Color_$Impl_$.Orange = kha__$Color_Color_$Impl_$._new(-23296);
 kha__$Color_Color_$Impl_$.invMaxChannelValue = 0.00392156862745098;
 kha_FontStyle.Default = new kha_FontStyle(false,false,false);
+kha_Scheduler.timeWarpSaveTime = 1.0;
 kha_Scheduler.DIF_COUNT = 3;
 kha_Scheduler.maxframetime = 0.5;
 kha_Scheduler.startTime = 0;
@@ -22845,10 +22921,10 @@ kha_Shaders.simple_vertData = "s403:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gb3BlcmF0aW9u
 kha_Shaders.painter_colored_fragData = "s236:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gZXhlY3V0aW9uIG1vZGUgOAovLyBVbmtub3duIG9wZXJhdGlvbiA4CnByZWNpc2lvbiBtZWRpdW1wIGZsb2F0Owp2YXJ5aW5nIHZlYzQgZnJhZ21lbnRDb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJZ2xfRnJhZ0NvbG9yID0gZnJhZ21lbnRDb2xvcjsKCXJldHVybjsKfQoK";
 kha_Shaders.painter_colored_vertData = "s518:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4CnByZWNpc2lvbiBtZWRpdW1wIGZsb2F0Owp1bmlmb3JtIG1hdDQgcHJvamVjdGlvbk1hdHJpeDsKYXR0cmlidXRlIHZlYzMgdmVydGV4UG9zaXRpb247CnZhcnlpbmcgdmVjNCBmcmFnbWVudENvbG9yOwphdHRyaWJ1dGUgdmVjNCB2ZXJ0ZXhDb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJZ2xfUG9zaXRpb24gPSAocHJvamVjdGlvbk1hdHJpeCAqIHZlYzQodmVydGV4UG9zaXRpb25bMF0sIHZlcnRleFBvc2l0aW9uWzFdLCB2ZXJ0ZXhQb3NpdGlvblsyXSwgMS4wKSk7CglmcmFnbWVudENvbG9yID0gdmVydGV4Q29sb3I7CglyZXR1cm47Cn0KCg";
 kha_Shaders.painter_image_fragData = "s842:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gZXhlY3V0aW9uIG1vZGUgOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOApwcmVjaXNpb24gbWVkaXVtcCBmbG9hdDsKdW5pZm9ybSBzYW1wbGVyMkQgdGV4Owp2YXJ5aW5nIHZlYzIgdGV4Q29vcmQ7CnZhcnlpbmcgdmVjNCBjb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJdmVjNCB0ZXhjb2xvcl85OwoJdGV4Y29sb3JfOSA9ICh0ZXh0dXJlMkQodGV4LCB0ZXhDb29yZCkgKiBjb2xvcik7Cgl0ZXhjb2xvcl85ID0gdmVjNCgodmVjMyh0ZXhjb2xvcl85WzBdLCB0ZXhjb2xvcl85WzFdLCB0ZXhjb2xvcl85WzJdKSAqIGNvbG9yWzNdKVswXSwgKHZlYzModGV4Y29sb3JfOVswXSwgdGV4Y29sb3JfOVsxXSwgdGV4Y29sb3JfOVsyXSkgKiBjb2xvclszXSlbMV0sICh2ZWMzKHRleGNvbG9yXzlbMF0sIHRleGNvbG9yXzlbMV0sIHRleGNvbG9yXzlbMl0pICogY29sb3JbM10pWzJdLCB0ZXhjb2xvcl85WzNdKTsKCWdsX0ZyYWdDb2xvciA9IHRleGNvbG9yXzk7CglyZXR1cm47Cn0KCg";
+kha_Shaders.painter_image_vertData = "s628:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKcHJlY2lzaW9uIG1lZGl1bXAgZmxvYXQ7CnVuaWZvcm0gbWF0NCBwcm9qZWN0aW9uTWF0cml4OwphdHRyaWJ1dGUgdmVjMyB2ZXJ0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWMyIHRleENvb3JkOwphdHRyaWJ1dGUgdmVjMiB0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWM0IGNvbG9yOwphdHRyaWJ1dGUgdmVjNCB2ZXJ0ZXhDb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJZ2xfUG9zaXRpb24gPSAocHJvamVjdGlvbk1hdHJpeCAqIHZlYzQodmVydGV4UG9zaXRpb25bMF0sIHZlcnRleFBvc2l0aW9uWzFdLCB2ZXJ0ZXhQb3NpdGlvblsyXSwgMS4wKSk7Cgl0ZXhDb29yZCA9IHRleFBvc2l0aW9uOwoJY29sb3IgPSB2ZXJ0ZXhDb2xvcjsKCXJldHVybjsKfQoK";
 kha_Shaders.painter_text_fragData = "s727:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gZXhlY3V0aW9uIG1vZGUgOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKcHJlY2lzaW9uIG1lZGl1bXAgZmxvYXQ7CnZhcnlpbmcgdmVjNCBmcmFnbWVudENvbG9yOwp1bmlmb3JtIHNhbXBsZXIyRCB0ZXg7CnZhcnlpbmcgdmVjMiB0ZXhDb29yZDsKCgoKdm9pZCBtYWluKCkKewoJZ2xfRnJhZ0NvbG9yID0gdmVjNCh2ZWMzKGZyYWdtZW50Q29sb3JbMF0sIGZyYWdtZW50Q29sb3JbMV0sIGZyYWdtZW50Q29sb3JbMl0pWzBdLCB2ZWMzKGZyYWdtZW50Q29sb3JbMF0sIGZyYWdtZW50Q29sb3JbMV0sIGZyYWdtZW50Q29sb3JbMl0pWzFdLCB2ZWMzKGZyYWdtZW50Q29sb3JbMF0sIGZyYWdtZW50Q29sb3JbMV0sIGZyYWdtZW50Q29sb3JbMl0pWzJdLCAodGV4dHVyZTJEKHRleCwgdGV4Q29vcmQpWzBdICogZnJhZ21lbnRDb2xvclszXSkpOwoJcmV0dXJuOwp9Cgo";
 kha_Shaders.painter_text_vertData = "s650:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKcHJlY2lzaW9uIG1lZGl1bXAgZmxvYXQ7CnVuaWZvcm0gbWF0NCBwcm9qZWN0aW9uTWF0cml4OwphdHRyaWJ1dGUgdmVjMyB2ZXJ0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWMyIHRleENvb3JkOwphdHRyaWJ1dGUgdmVjMiB0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWM0IGZyYWdtZW50Q29sb3I7CmF0dHJpYnV0ZSB2ZWM0IHZlcnRleENvbG9yOwoKCgp2b2lkIG1haW4oKQp7CglnbF9Qb3NpdGlvbiA9IChwcm9qZWN0aW9uTWF0cml4ICogdmVjNCh2ZXJ0ZXhQb3NpdGlvblswXSwgdmVydGV4UG9zaXRpb25bMV0sIHZlcnRleFBvc2l0aW9uWzJdLCAxLjApKTsKCXRleENvb3JkID0gdGV4UG9zaXRpb247CglmcmFnbWVudENvbG9yID0gdmVydGV4Q29sb3I7CglyZXR1cm47Cn0KCg";
 kha_Shaders.painter_video_fragData = "s842:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gZXhlY3V0aW9uIG1vZGUgOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOApwcmVjaXNpb24gbWVkaXVtcCBmbG9hdDsKdW5pZm9ybSBzYW1wbGVyMkQgdGV4Owp2YXJ5aW5nIHZlYzIgdGV4Q29vcmQ7CnZhcnlpbmcgdmVjNCBjb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJdmVjNCB0ZXhjb2xvcl85OwoJdGV4Y29sb3JfOSA9ICh0ZXh0dXJlMkQodGV4LCB0ZXhDb29yZCkgKiBjb2xvcik7Cgl0ZXhjb2xvcl85ID0gdmVjNCgodmVjMyh0ZXhjb2xvcl85WzBdLCB0ZXhjb2xvcl85WzFdLCB0ZXhjb2xvcl85WzJdKSAqIGNvbG9yWzNdKVswXSwgKHZlYzModGV4Y29sb3JfOVswXSwgdGV4Y29sb3JfOVsxXSwgdGV4Y29sb3JfOVsyXSkgKiBjb2xvclszXSlbMV0sICh2ZWMzKHRleGNvbG9yXzlbMF0sIHRleGNvbG9yXzlbMV0sIHRleGNvbG9yXzlbMl0pICogY29sb3JbM10pWzJdLCB0ZXhjb2xvcl85WzNdKTsKCWdsX0ZyYWdDb2xvciA9IHRleGNvbG9yXzk7CglyZXR1cm47Cn0KCg";
-kha_Shaders.painter_image_vertData = "s628:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKcHJlY2lzaW9uIG1lZGl1bXAgZmxvYXQ7CnVuaWZvcm0gbWF0NCBwcm9qZWN0aW9uTWF0cml4OwphdHRyaWJ1dGUgdmVjMyB2ZXJ0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWMyIHRleENvb3JkOwphdHRyaWJ1dGUgdmVjMiB0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWM0IGNvbG9yOwphdHRyaWJ1dGUgdmVjNCB2ZXJ0ZXhDb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJZ2xfUG9zaXRpb24gPSAocHJvamVjdGlvbk1hdHJpeCAqIHZlYzQodmVydGV4UG9zaXRpb25bMF0sIHZlcnRleFBvc2l0aW9uWzFdLCB2ZXJ0ZXhQb3NpdGlvblsyXSwgMS4wKSk7Cgl0ZXhDb29yZCA9IHRleFBvc2l0aW9uOwoJY29sb3IgPSB2ZXJ0ZXhDb2xvcjsKCXJldHVybjsKfQoK";
 kha_Shaders.painter_video_vertData = "s628:I3ZlcnNpb24gMTAwCi8vIFVua25vd24gb3BlcmF0aW9uIDgKLy8gVW5rbm93biBvcGVyYXRpb24gOAovLyBVbmtub3duIG9wZXJhdGlvbiA4Ci8vIFVua25vd24gb3BlcmF0aW9uIDgKcHJlY2lzaW9uIG1lZGl1bXAgZmxvYXQ7CnVuaWZvcm0gbWF0NCBwcm9qZWN0aW9uTWF0cml4OwphdHRyaWJ1dGUgdmVjMyB2ZXJ0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWMyIHRleENvb3JkOwphdHRyaWJ1dGUgdmVjMiB0ZXhQb3NpdGlvbjsKdmFyeWluZyB2ZWM0IGNvbG9yOwphdHRyaWJ1dGUgdmVjNCB2ZXJ0ZXhDb2xvcjsKCgoKdm9pZCBtYWluKCkKewoJZ2xfUG9zaXRpb24gPSAocHJvamVjdGlvbk1hdHJpeCAqIHZlYzQodmVydGV4UG9zaXRpb25bMF0sIHZlcnRleFBvc2l0aW9uWzFdLCB2ZXJ0ZXhQb3NpdGlvblsyXSwgMS4wKSk7Cgl0ZXhDb29yZCA9IHRleFBvc2l0aW9uOwoJY29sb3IgPSB2ZXJ0ZXhDb2xvcjsKCXJldHVybjsKfQoK";
 kha_System.renderListeners = [];
 kha_System.foregroundListeners = [];
@@ -22972,6 +23048,11 @@ kha_network_Session.START = 0;
 kha_network_Session.ENTITY_UPDATES = 1;
 kha_network_Session.CONTROLLER_UPDATES = 2;
 kha_network_Session.REMOTE_CALL = 3;
+kha_network_Session.PING = 4;
+kha_network_Session.RPC_SERVER = 0;
+kha_network_Session.RPC_ALL = 1;
+kha_network_SyncBuilder.nextId = 0;
+kha_network_SyncBuilder.objects = [];
 pathfinder_Pathfinder._COST_ADJACENT = 10;
 pathfinder_Pathfinder._COST_DIAGIONAL = 14;
 systems_GuiRenderSystem.DEBUG_GUI = "1" + "-debug";
@@ -23052,5 +23133,3 @@ zui_Zui.firstInstance = true;
 zui_Zui.prerenderedElements = false;
 Main.main();
 })(typeof exports != "undefined" ? exports : typeof window != "undefined" ? window : typeof self != "undefined" ? self : this, typeof window != "undefined" ? window : typeof global != "undefined" ? global : typeof self != "undefined" ? self : this);
-
-//# sourceMappingURL=kha.js.map
