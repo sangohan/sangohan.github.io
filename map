@@ -45,7 +45,7 @@
   </object>
   <object id="20" type="player" x="352" y="720" width="16" height="16">
    <properties>
-    <property name="movement" value="25"/>
+    <property name="movement" value="10"/>
     <property name="selectable" value="true"/>
    </properties>
   </object>
