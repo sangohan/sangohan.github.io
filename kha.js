@@ -29423,7 +29423,7 @@ if(ArrayBuffer.prototype.slice == null) {
 var DataView = $global.DataView || js_html_compat_DataView;
 var Float32Array = $global.Float32Array || js_html_compat_Float32Array._new;
 var Uint8Array = $global.Uint8Array || js_html_compat_Uint8Array._new;
-Config.window = { title : "Turn Based Strategy", width : 1280, height : 1024};
+Config.window = { title : "Turn Based Strategy", width : 1360, height : 1024};
 Xml.Element = 0;
 Xml.PCData = 1;
 Xml.CData = 2;
